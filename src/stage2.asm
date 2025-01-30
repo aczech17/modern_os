@@ -44,8 +44,27 @@ start_32:
 	mov esp, ebp
 
 
+	call clear_vga
+	call set_up_page_tables
+	call enable_paging
 
-	; Set up page tables.
+	lgdt [gdt_64_addr + 0x20000]
+	jmp dword 0x8:(0x20000 + start_64)
+
+	[bits 64]
+start_64:
+
+    jmp $
+
+
+CODE_END:
+
+
+
+[bits 32]
+%include "src/print_string_vga.asm"
+
+set_up_page_tables:
 	mov eax, page_table.level3
 	or eax, 0b11 ; present + writable
 	mov [page_table.level4], eax
@@ -67,12 +86,31 @@ start_32:
 	cmp ecx, 512
 	jne .map_p2_table
 
-    jmp $
+	ret
 
+enable_paging:
+	; Load level4 table to CR3 register.
+	mov eax, page_table.level4
+	mov cr3, eax
 
-CODE_END:
+	; Enable PAE flag in CR4 (physical address extension).
+	mov eax, cr4
+	or eax, 1 << 5
+	mov cr4, eax
 
-;%include "src/print_string_vga.asm"
+	; Set long mode bit in a model specific register called EFER
+	mov ecx, 0xC0000080 ; EFER number
+	rdmsr
+	or eax, 1 << 8 	; EFER content lands in EAX so modify it
+	wrmsr			; and write it back.
+
+	; Enable paging in the CR0 register.
+	mov eax, cr0
+	or eax, 1 << 31
+	mov cr0, eax
+
+	ret
+
 
 gdt_32_addr:
 	dw (gdt_32.end - gdt_32) - 1
