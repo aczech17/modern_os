@@ -53,17 +53,25 @@ start_32:
 
 	[bits 64]
 start_64:
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
 
+	mov rbp, stack_top
+	mov rsp, rbp
+
+	mov rbx, hello_message + 0x20000
+	call print_string_vga
     jmp $
 
 
 CODE_END:
 
 
-
-[bits 32]
 %include "src/print_string_vga.asm"
 
+[bits 32]
 set_up_page_tables:
 	mov eax, page_table.level3
 	or eax, 0b11 ; present + writable
@@ -174,6 +182,6 @@ stack_bottom:
 stack_top:
 
 section .rodata
-hello_message db 'witched to 32 bit.', 0
+hello_message db 'Booting...', 0
 
 ;times (512 - ($ - $$) % 512) db 0

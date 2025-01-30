@@ -1,30 +1,29 @@
-[bits 32]
+[bits 64]
 
 VIDEO_MEMORY equ 0xB8000
 VIDEO_MEMORY_END equ 0xB8FFF
 COLOR equ 0x07
 
-; EBX - string pointer
+; RBX - string pointer
 print_string_vga:
-    pusha
-    mov edx, VIDEO_MEMORY
+    mov rdx, VIDEO_MEMORY
     mov ah, COLOR
 .loop:
-    mov al, [ebx]
+    mov al, [rbx]
 
     cmp al, 0
     je .done
 
-    mov [edx], ax
+    mov [rdx], ax
 
-    add ebx, 1
-    add edx, 2
+    add rbx, 1
+    add rdx, 2
     jmp .loop
 
 .done:
-    popa
     ret
 
+[bits 32]
 clear_vga:
     pusha
     mov edx, VIDEO_MEMORY
