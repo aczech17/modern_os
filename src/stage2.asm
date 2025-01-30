@@ -44,7 +44,6 @@ start_32:
 	mov esp, ebp
 
 
-	call clear_vga
 	call set_up_page_tables
 	call enable_paging
 
@@ -61,6 +60,7 @@ start_64:
 	mov rbp, stack_top
 	mov rsp, rbp
 
+	call clear_vga
 	mov rbx, hello_message + 0x20000
 	call print_string_vga
     jmp $

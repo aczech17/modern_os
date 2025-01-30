@@ -23,18 +23,15 @@ print_string_vga:
 .done:
     ret
 
-[bits 32]
 clear_vga:
-    pusha
-    mov edx, VIDEO_MEMORY
+    mov rdx, VIDEO_MEMORY
     mov ah, COLOR
     mov al, ' '
 .loop:
-    mov [edx], ax
-    add edx, 2
-    cmp edx, VIDEO_MEMORY_END
+    mov [rdx], ax
+    add rdx, 2
+    cmp rdx, VIDEO_MEMORY_END
     jle .loop
 
-    popa
     ret
     
