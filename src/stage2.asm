@@ -33,24 +33,39 @@
 
 	[bits 32]
 start_32:
-
-	; set up the segment registers
+	; Set up the segment registers.
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
 
-	; set up the stack
-	;mov ebp, 0x90000
-	;mov esp, ebp
-
+	; Set up the stack.
 	mov ebp, stack_top
 	mov esp, ebp
 
-	;call clear_vga
-	;mov ebx, hello_message
-	;call print_string_vga
 
+
+	; Set up page tables.
+	mov eax, page_table.level3
+	or eax, 0b11 ; present + writable
+	mov [page_table.level4], eax
+
+	mov eax, page_table.level2
+	or eax, 0b11 ; present + writable
+	mov [page_table.level3], eax
+
+	; Map each level2 entry to a huge 2MiB page.
+	mov ecx, 0
+.map_p2_table:
+	; Map ecx-th P2 entry to a huge page that starts at address 2MiB * ECX.
+	mov eax, 1 << 21 ; 2MiB
+	mul ecx ; start address of ECX-th page
+	or eax, 0b10000011 ; huge + present + writable
+	mov [page_table.level2 + ecx * 8], eax ; map ECX-th entry
+
+	inc ecx
+	cmp ecx, 512
+	jne .map_p2_table
 
     jmp $
 
@@ -62,8 +77,7 @@ CODE_END:
 gdt_32_addr:
 	dw (gdt_32.end - gdt_32) - 1
 	dd 0x20000 + gdt_32
-
-times (32 - ($ - $$) % 32) db 0xcc
+times (32 - ($ - $$) % 32) db 0xCC
 
 gdt_32:
 	; Flat mode, base = 0x0, limit = 0xFFFFFFFF
@@ -72,25 +86,56 @@ gdt_32:
 	dd 0
 .code:
 	dd 0x0000_FFFF  ; base (15 - 0) limit (15 - 0)
-	dd    (0b1010 << 8) 					    | (1 << 12) 		|   (1 << 15) | (0xf << 16)   | (1 << 22)     | (1 << 23)
-	
+	dd    (0b1010 << 8) 					    | (1 << 12) 		|   (1 << 15) | (0xF << 16)   | (1 << 22)     | (1 << 23)
 	;  code nonconforming readable notaccessed, descriptor type=code   present    limit(19-16)   32 bit segment  granularity
-	
-
 .data:
-	dd 0xffff  ; segment limit
-	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xf << 16) | (1 << 22) | (1 << 23)
+	dd 0xFFFF  ; segment limit
+	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 22) | (1 << 23)
 .null_2:
 	dd 0
 	dd 0
 .end:
 
+gdt_64_addr:
+	dw (gdt_64.end - gdt_64) - 1
+	dd 0x20000 + gdt_64
+times (32 - ($ - $$) % 32) db 0xCC
 
-hello_message db 'witched to 32 bit.', 0
+gdt_64:
+	; Flat mode again
+.null:
+	dd 0
+	dd 0
+.code:
+	; Same as 32 but clear D/B and set L (64-bit code segment)
+	dd 0xFFFF  ; segment limit
+	dd (10 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 21) | (1 << 23)
+.data:
+	dd 0xFFFF  ; segment limit
+	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 21) | (1 << 23)
+.null2:
+	dd 0
+	dd 0
+.end:
+;times (4096 - ($ - $$) % 4096) db 0
+
 
 section .bss
+align 4096
+
+page_table:
+.level4:
+	resb 4096
+.level3:
+	resb 4096
+.level2:
+	resb 4096
+
 stack_bottom:
-	resb 4 * 1024
+	resb 16 * 1024
 stack_top:
+
+section .rodata
+hello_message db 'witched to 32 bit.', 0
 
 ;times (512 - ($ - $$) % 512) db 0
