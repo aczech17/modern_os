@@ -2,11 +2,15 @@ import os
 import subprocess
 import sys
 
+bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
+kernel_sources = ['src/kernel.c', 'src/vga.c']
+
+
 def assemble_asm(source, output):
     print(f"Assembling {source}.")
     subprocess.run(['nasm', source, '-o', output], check=True)
 
-def compile_c_nostd(source_files, output):
+def compile_kernel(source_files, output):
     print(f"Compiling {', '.join(source_files)} to {output}.")
     subprocess.run(['gcc', '-nostdlib', '-Wall', '-Wextra', *source_files, '-o', output], check=True)
     subprocess.run(['strip', output])
@@ -18,12 +22,11 @@ def calculate_sectors(file_paths):
             print(f"Error: File {file_path} not found!")
             exit(1)
         file_size = os.path.getsize(file_path)
-        print(f"File size: {file_size}")
         all_file_sizes += file_size
 
-
+    print(f"Stage 2 and kernel size is {all_file_sizes} B.")
     sectors = (all_file_sizes + 511) // 512  # Round up to 512.
-    print(f"Sectors to read from disk: {sectors}")
+    print(f"That makes up to {sectors} sectors.")
 
     with open('out/sectors.inc', 'w') as f:
         f.write(f"SECTORS_TO_READ equ {sectors}\n")
@@ -31,9 +34,8 @@ def calculate_sectors(file_paths):
     print("SECTORS_TO_READ written to out/sectors.inc")
 
 def create_disk_image():
-    print("Joining object files...")
+    print("Joining the ELF files...")
     with open("out/os.img", "wb") as img_file:
-        # Łączenie stage1.o i stage2.o w jeden plik obrazu
         with open("out/stage1.elf", "rb") as stage1:
             img_file.write(stage1.read())
         with open("out/stage2.elf", "rb") as stage2:
@@ -47,6 +49,14 @@ def run_qemu():
 def clean_all():
     subprocess.run(['rm', '-rf', 'out'])
 
+def print_success_message():
+    if sys.platform.startswith("win"):
+        # Printing green text on Windows is not so easy, so print it normally.
+        print('Done')
+    else:
+        # If it's Linux, print green.
+        print('\033[32mDone\033[0m')
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "clean":
         clean_all()
@@ -54,20 +64,24 @@ def main():
 
     os.makedirs('out', exist_ok=True)
 
-    # Assemble stage 2
-    assemble_asm('src/stage2.asm', 'out/stage2.elf')
-    # compile_c_nostd('src/kernel.c', 'out/kernel.elf')
-    # compile_c_nostd('src/vga.c', 'out/vga.elf')
-    compile_c_nostd(['src/kernel.c', 'src/vga.c'], 'out/kernel.elf')
+    # Assemble stage 2 and compile the kernel.
+    assemble_asm(bootloader_sources[1], 'out/stage2.elf')
+    compile_kernel(kernel_sources, 'out/kernel.elf')
+
+    # Calculate how many sectors do they take.
     calculate_sectors(['out/stage2.elf', 'out/kernel.elf'])
 
     # Assemble stage 1
-    assemble_asm('src/stage1.asm', 'out/stage1.elf')
+    assemble_asm(bootloader_sources[0], 'out/stage1.elf')
+
+    # Join the elf files to the final OS image.
     create_disk_image()
 
+    print_success_message()
+
     if len(sys.argv) > 1 and sys.argv[1] == "run":
+        print('Running...')
         run_qemu()
 
-# Uruchomienie programu
 if __name__ == '__main__':
     main()
