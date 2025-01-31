@@ -1,24 +1,101 @@
 #include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+
+#define VGA_ADDRESS ((char*)(0xB8000))
+#define VGA_WIDTH 80
+#define VGA_HEIGHT 25
+#define VGA_SIZE (VGA_WIDTH * VGA_HEIGHT * 2)
+#define VGA_COLOR 0x07
+
+size_t strlen(const char* text)
+{
+    size_t len = 0;
+    for (; *text != 0; ++text)
+        ++len;
+    return len;
+}
+
+void clear_vga()
+{
+    for (char* dest = VGA_ADDRESS; dest < VGA_ADDRESS + VGA_SIZE; dest += 2)
+    {
+        *dest = ' ';
+        *(dest + 1) = VGA_COLOR;
+    }
+}
+
+void write_char_vga(const char c, size_t row, size_t col)
+{
+    if (row >= VGA_HEIGHT || col >= VGA_WIDTH)
+        return;
+
+    char* dest = VGA_ADDRESS + (row * VGA_WIDTH + col) * 2;
+    *dest = c;
+    *(dest + 1) = VGA_COLOR;
+}
+
+void write_string_vga(const char* text, size_t row, size_t col)
+{
+    for (char* src = (char*)text; *src != 0; ++src)
+    {
+        if (col >= VGA_WIDTH)
+        {
+            ++row;
+            col = 0;
+            if (row >= VGA_HEIGHT)
+                return;
+        }
+
+        if (*src == '\n')
+        {
+            ++row;
+            col = 0;
+            if (row >= VGA_HEIGHT)
+                return;
+            continue;
+        }
+
+        write_char_vga(*src, row, col);
+        ++col;
+    }
+}
+
+
+void write_hex(uint64_t number, size_t row, size_t col, bool truncate)
+{
+    if (number == 0 && truncate)
+    {
+        write_string_vga("0x0", row, col);
+        return;
+    }
+
+    write_string_vga("0x", row, col);
+    col += 2;
+
+    // 16 nibbles
+    for (int i = 15; i >= 0; --i)
+    {
+        uint64_t nibble = ((number >> (i * 4)) & 0xF);
+        if (nibble == 0 && truncate)
+            continue;
+
+        truncate = false;
+        char nibble_rep = "0123456789ABCDEF"[nibble];
+        write_char_vga(nibble_rep, row, col);
+        ++col;
+    }
+}
 
 void _start(uint64_t kernel_address)
 {
-    const char* msg = "Booting Modern OS...";
-    char* src = (char*)msg;
-    char* dst = (char*)0xB8000;
-    const char* vga_end = (char*)0xB8FFF;
+    clear_vga();
+    write_string_vga("Booting Modern OS...", 0, 0);
 
-    for (; *src != 0; src++, dst+=2)
-    {
-        *dst = *src;
-        *(dst + 1) = 0x07;
-    }
+    const char* kernel_location_msg = "Kernel loaded to address: ";
+    write_string_vga(kernel_location_msg, 1, 0);
 
-    // Clear the screen.
-    for (; dst < vga_end; dst += 2)
-    {
-        *dst = ' ';
-        *(dst + 1) = 0x07;
-    }
+    write_hex(kernel_address, 1, strlen(kernel_location_msg), true);
 
     for (;;);
 }
