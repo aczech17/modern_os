@@ -8,7 +8,7 @@ def assemble_asm(source, output):
 
 def compile_c_nostd(source, output):
     print(f"Compiling {source}.")
-    subprocess.run(['gcc', '-nostdlib', source, '-o', output])
+    subprocess.run(['gcc', '-nostdlib', source, '-o', output], check=True)
     subprocess.run(['strip', output])
 
 def calculate_sectors(file_paths):
