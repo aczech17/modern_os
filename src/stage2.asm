@@ -9,8 +9,8 @@ stage2:
 	or al, 2
 	out 0x92, al
 
-	; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
-    cli
+
+    cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
 
 	; set up segment registers
 	mov ax, 0x2000
@@ -44,35 +44,6 @@ start_32:
 	mov esp, ebp
 
 
-	call set_up_page_tables
-	call enable_paging
-
-	lgdt [gdt_64_addr + 0x20000]
-	jmp dword 0x8:(0x20000 + start_64)
-
-	[bits 64]
-start_64:
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov ss, ax
-
-	mov rbp, stack_top
-	mov rsp, rbp
-
-	call clear_vga
-	mov rbx, hello_message + 0x20000
-	call print_string_vga
-    
-	; Now let's load the kernel.
-	jmp $ ; TODO
-
-CODE_END:
-
-
-%include "src/print_string_vga.asm"
-
-[bits 32]
 set_up_page_tables:
 	mov eax, page_table.level3
 	or eax, 0b11 ; present + writable
@@ -95,7 +66,6 @@ set_up_page_tables:
 	cmp ecx, 512
 	jne .map_p2_table
 
-	ret
 
 enable_paging:
 	; Load level4 table to CR3 register.
@@ -118,14 +88,42 @@ enable_paging:
 	or eax, 1 << 31
 	mov cr0, eax
 
-	ret
+
+
+	lgdt [gdt_64_addr + 0x20000]
+	jmp dword 0x8:(0x20000 + start_64)
+
+	[bits 64]
+start_64:
+	; Set up segment registers once again.
+	mov ax, 0x10 ; why?
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+
+	mov rbp, stack_top
+	mov rsp, rbp
+
+clear_vga:
+    mov rdx, 0xB8000
+    mov ah, 0x07 ; Gray on black
+    mov al, ' '
+.loop:
+    mov [rdx], ax
+    add rdx, 2
+    cmp rdx, 0xB8FFF
+    jle .loop
+
+    
+	; Now let's load the kernel.
+kernel_load:
+	jmp $ ; TODO
+
 
 
 gdt_32_addr:
 	dw (gdt_32.end - gdt_32) - 1
 	dd 0x20000 + gdt_32
-
-
 align 32
 
 gdt_32:
@@ -148,7 +146,6 @@ gdt_32:
 gdt_64_addr:
 	dw (gdt_64.end - gdt_64) - 1
 	dd 0x20000 + gdt_64
-
 align 32
 
 gdt_64:
@@ -184,9 +181,6 @@ stack_bottom:
 	resb 16 * 1024
 stack_top:
 
-section .rodata
-hello_message db 'Booting...', 0
 
-align 512
+align 512 ; ?
 kernel:
-
