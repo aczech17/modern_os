@@ -14,13 +14,21 @@ size_t strlen(const char* text)
 
 void kernel_main(uint64_t kernel_address)
 {
-    clear_vga();
-    write_string_vga("Booting Modern OS...", 0, 0);
+    Vga_buffer vga_buffer =
+    {
+        .row = 0,
+        .col = 0,
+        .color = 0x07, // gray on black
+    };
+
+    clear_screen(&vga_buffer);
+    write_string(&vga_buffer, "Booting Modern OS...\n");
 
     const char* kernel_location_msg = "Kernel loaded to address: ";
-    write_string_vga(kernel_location_msg, 1, 0);
+    write_string(&vga_buffer, kernel_location_msg);
+    write_hex(&vga_buffer, kernel_address, false);
 
-    write_hex(kernel_address, 1, strlen(kernel_location_msg), true);
+    write_string(&vga_buffer, "\nTEST");
 
     for (;;);
 }

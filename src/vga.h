@@ -5,9 +5,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void clear_vga();
-void write_char_vga(const char c, size_t row, size_t col);
-void write_string_vga(const char* text, size_t row, size_t col);
-void write_hex(uint64_t number, size_t row, size_t col, bool truncate);
+typedef struct
+{
+    size_t row, col;
+    char color;
+}Vga_buffer;
+
+void clear_screen(Vga_buffer*);
+void write_string(Vga_buffer*, const char* text);
+void write_hex(Vga_buffer*, uint64_t number, bool strip);
 
 #endif // VGA_H
