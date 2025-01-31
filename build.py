@@ -12,7 +12,7 @@ def assemble_asm(source, output):
 
 def compile_kernel(source_files, output):
     print(f"Compiling {', '.join(source_files)} to {output}.")
-    subprocess.run(['gcc', '-nostdlib', '-Wall', '-Wextra', *source_files, '-o', output], check=True)
+    subprocess.run(['gcc', '-nostdlib', '-Wall', '-Wextra', *source_files, '-e', 'kernel_main', '-o', output], check=True)
     subprocess.run(['strip', output])
 
 def calculate_sectors(file_paths):

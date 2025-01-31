@@ -12,7 +12,7 @@ size_t strlen(const char* text)
     return len;
 }
 
-void _start(uint64_t kernel_address)
+void kernel_main(uint64_t kernel_address)
 {
     clear_vga();
     write_string_vga("Booting Modern OS...", 0, 0);
