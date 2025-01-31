@@ -89,20 +89,10 @@ enable_paging:
 	[bits 64]
 start_64:
 	; Set up segment registers once again.
-	mov ax, 0x10 ; why?
+	mov ax, 0x10 ; 0x10 is code segment offset.
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
-
-clear_vga:
-    mov rdx, 0xB8000	; VGA start
-    mov ah, 0x07 		; Gray on black
-    mov al, ' '
-.loop:
-    mov [rdx], ax
-    add rdx, 2
-    cmp rdx, 0xB8FFF	; VGA end
-    jle .loop
 
     
 	; Now let's load the kernel.
@@ -154,10 +144,11 @@ kernel_load:
 	; Set up the stack.
 	mov rsp, 0x30f000
 
-	 ;jmp $
-	; Jump to kernel
+	 
+
+	; Finally jump to the kernel.
 	mov rax, [0x20000 + kernel + 0x18] ; e_entry -- entry point
-	jmp rax
+	call rax
 
 	jmp $
 
