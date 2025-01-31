@@ -91,7 +91,7 @@ void write_string(Vga_buffer* buffer, const char* text)
     }
 }
 
-void write_hex(Vga_buffer* buffer, uint64_t number, bool strip)
+void write_hex(Vga_buffer* buffer, u64 number, bool strip)
 {
     if (number == 0 && strip)
     {
@@ -104,7 +104,7 @@ void write_hex(Vga_buffer* buffer, uint64_t number, bool strip)
     // 16 nibbles
     for (int i = 15; i >= 0; --i)
     {
-        uint64_t nibble = ((number >> (i * 4)) & 0xF);
+        u64 nibble = ((number >> (i * 4)) & 0xF);
         if (nibble == 0 && strip)
             continue;
 

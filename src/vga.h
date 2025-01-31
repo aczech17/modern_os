@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
+#include "common.h"
 
 typedef struct
 {
@@ -13,6 +13,6 @@ typedef struct
 
 void clear_screen(Vga_buffer*);
 void write_string(Vga_buffer*, const char* text);
-void write_hex(Vga_buffer*, uint64_t number, bool strip);
+void write_hex(Vga_buffer*, u64 number, bool strip);
 
 #endif // VGA_H

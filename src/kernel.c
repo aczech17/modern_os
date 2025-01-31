@@ -1,7 +1,6 @@
-#include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-
+#include "common.h"
 #include "vga.h"
 
 size_t strlen(const char* text)
@@ -12,7 +11,7 @@ size_t strlen(const char* text)
     return len;
 }
 
-void kernel_main(uint64_t kernel_address)
+void kernel_main(u64 kernel_address)
 {
     Vga_buffer vga_buffer =
     {
@@ -29,7 +28,7 @@ void kernel_main(uint64_t kernel_address)
     write_hex(&vga_buffer, kernel_address, false);
 
     write_string(&vga_buffer, "\nTEST");
-    for (uint64_t i = 0; ; ++i)
+    for (u64 i = 0; ; ++i)
     {
         write_string(&vga_buffer, "\n");
         write_hex(&vga_buffer, i, true);
