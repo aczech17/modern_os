@@ -6,9 +6,9 @@ def assemble_asm(source, output):
     print(f"Assembling {source}.")
     subprocess.run(['nasm', source, '-o', output], check=True)
 
-def compile_c_nostd(source, output):
-    print(f"Compiling {source}.")
-    subprocess.run(['gcc', '-nostdlib', '-Wall', '-Wextra', source, '-o', output], check=True)
+def compile_c_nostd(source_files, output):
+    print(f"Compiling {', '.join(source_files)} to {output}.")
+    subprocess.run(['gcc', '-nostdlib', '-Wall', '-Wextra', *source_files, '-o', output], check=True)
     subprocess.run(['strip', output])
 
 def calculate_sectors(file_paths):
@@ -56,7 +56,9 @@ def main():
 
     # Assemble stage 2
     assemble_asm('src/stage2.asm', 'out/stage2.elf')
-    compile_c_nostd('src/kernel.c', 'out/kernel.elf')
+    # compile_c_nostd('src/kernel.c', 'out/kernel.elf')
+    # compile_c_nostd('src/vga.c', 'out/vga.elf')
+    compile_c_nostd(['src/kernel.c', 'src/vga.c'], 'out/kernel.elf')
     calculate_sectors(['out/stage2.elf', 'out/kernel.elf'])
 
     # Assemble stage 1
