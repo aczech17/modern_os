@@ -39,11 +39,6 @@ start_32:
 	mov es, ax
 	mov ss, ax
 
-	; Set up the stack.
-	mov ebp, stack_top
-	mov esp, ebp
-
-
 set_up_page_tables:
 	mov eax, page_table.level3
 	or eax, 0b11 ; present + writable
@@ -65,7 +60,6 @@ set_up_page_tables:
 	inc ecx
 	cmp ecx, 512
 	jne .map_p2_table
-
 
 enable_paging:
 	; Load level4 table to CR3 register.
@@ -89,7 +83,6 @@ enable_paging:
 	mov cr0, eax
 
 
-
 	lgdt [gdt_64_addr + 0x20000]
 	jmp dword 0x8:(0x20000 + start_64)
 
@@ -101,24 +94,54 @@ start_64:
 	mov es, ax
 	mov ss, ax
 
-	mov rbp, stack_top
-	mov rsp, rbp
-
 clear_vga:
-    mov rdx, 0xB8000
-    mov ah, 0x07 ; Gray on black
+    mov rdx, 0xB8000	; VGA start
+    mov ah, 0x07 		; Gray on black
     mov al, ' '
 .loop:
     mov [rdx], ax
     add rdx, 2
-    cmp rdx, 0xB8FFF
+    cmp rdx, 0xB8FFF	; VGA end
     jle .loop
 
     
 	; Now let's load the kernel.
 kernel_load:
-	jmp $ ; TODO
+	mov rsi, [0x20000 + kernel + 0x20]			; Load e_phof -- start of the program header table.
+												; Now in RSI we have the offset from the start of the kernel file,
+												; but we want the offset in the memory, so
+	add rsi, 0x20000 + kernel					; we add to RSI the size of the stage 2.
 
+	movzx ecx, word [0x20000 + kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
+
+	cld									; Clear direction flag for future rep movsb.
+.ph_loop:
+	mov eax, [rsi + 0]	; ph_type
+	cmp eax, 1			; Check if PT_LOAD, if not then ignore.
+	jne .next
+	
+	mov r8d,  [rsi + 0x08] 	; p_offset
+	mov r9d,  [rsi + 0x10]	; p_vaddr -- address of the segment (physical?)
+	mov r10d, [rsi + 0x20]	; p_filesz -- size of the segment
+
+	; Copy the data so the program header says.
+	mov rbp, rsi	; save rsi and rcx
+	mov r15, rcx
+
+	lea rsi, [0x20000 + kernel + r8d]	; source (kernel start + p_offset)
+	mov rdi, r9							; destination  (p_vaddr)
+	mov rcx, r10						; count of bytes (p_filesz)
+	rep movsb
+
+	mov rcx, r15	; restore rsi and rcx
+	mov rsi, rbp	
+
+.next:
+	add rsi, 0x20	; 0x20 == ph table entry size
+	dec rcx
+	jnz .ph_loop
+
+	jmp $
 
 
 gdt_32_addr:
@@ -166,21 +189,16 @@ gdt_64:
 .end:
 
 
-section .bss
 align 4096
 
 page_table:
 .level4:
-	resb 4096
+	times 512 dq 0
 .level3:
-	resb 4096
+	times 512 dq 0
 .level2:
-	resb 4096
+	times 512 dq 0
+	
 
-stack_bottom:
-	resb 16 * 1024
-stack_top:
-
-
-align 512 ; ?
+times (512 - ($ - $$) % 512) db 0
 kernel:
