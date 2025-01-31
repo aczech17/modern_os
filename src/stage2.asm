@@ -105,6 +105,7 @@ kernel_load:
 	movzx ecx, word [0x20000 + kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
 
 	cld									; Clear direction flag for future rep movsb.
+	mov r14, 0	; Kernel start address  -- first PT_LOAD v_addr. At first, it's 0 (unset).
 .ph_loop:
 	mov eax, [rsi + 0]	; ph_type
 	cmp eax, 1			; Check if PT_LOAD, if not then ignore.
@@ -115,7 +116,10 @@ kernel_load:
 	mov r10, [rsi + 0x20]	; p_filesz -- size of the segment
 	mov r11, [rsi + 0x28]	; p_memsz
 
-
+	test r14, r14	; Test if already set.
+	jnz .skip
+	mov r14, r9
+	.skip:
 
 	; Save registers
 	mov rbp, rsi	; save rsi and rcx
@@ -145,13 +149,12 @@ kernel_load:
 	mov rsp, 0x30f000
 
 	 
+	mov rdi, r14						; Give kernel start address to the kernel.
+	mov rax, [0x20000 + kernel + 0x18] 	; e_entry -- entry point
+	call rax							; Finally jump to the kernel.
 
-	; Finally jump to the kernel.
-	mov rax, [0x20000 + kernel + 0x18] ; e_entry -- entry point
-	call rax
 
 	jmp $
-
 
 gdt_32_addr:
 	dw (gdt_32.end - gdt_32) - 1

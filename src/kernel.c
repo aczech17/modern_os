@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-void _start(void)
+void _start(uint64_t kernel_address)
 {
     const char* msg = "Booting Modern OS...";
     char* src = (char*)msg;
