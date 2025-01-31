@@ -1,6 +1,6 @@
 [bits 16]
 [org 0x0000]
-    
+stage2:
 	; Enable A20 http://wiki.osdev.org/A20_Line
 	mov ax, 0x2401
 	int 0x15
@@ -63,8 +63,9 @@ start_64:
 	call clear_vga
 	mov rbx, hello_message + 0x20000
 	call print_string_vga
-    jmp $
-
+    
+	; Now let's load the kernel.
+	jmp $ ; TODO
 
 CODE_END:
 
@@ -123,7 +124,9 @@ enable_paging:
 gdt_32_addr:
 	dw (gdt_32.end - gdt_32) - 1
 	dd 0x20000 + gdt_32
-times (32 - ($ - $$) % 32) db 0xCC
+
+
+align 32
 
 gdt_32:
 	; Flat mode, base = 0x0, limit = 0xFFFFFFFF
@@ -145,7 +148,8 @@ gdt_32:
 gdt_64_addr:
 	dw (gdt_64.end - gdt_64) - 1
 	dd 0x20000 + gdt_64
-times (32 - ($ - $$) % 32) db 0xCC
+
+align 32
 
 gdt_64:
 	; Flat mode again
@@ -163,7 +167,6 @@ gdt_64:
 	dd 0
 	dd 0
 .end:
-;times (4096 - ($ - $$) % 4096) db 0
 
 
 section .bss
@@ -184,4 +187,6 @@ stack_top:
 section .rodata
 hello_message db 'Booting...', 0
 
-;times (512 - ($ - $$) % 512) db 0
+align 512
+kernel:
+
