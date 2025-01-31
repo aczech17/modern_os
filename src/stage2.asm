@@ -120,11 +120,11 @@ kernel_load:
 	cmp eax, 1			; Check if PT_LOAD, if not then ignore.
 	jne .next
 	
-	mov r8d,  [rsi + 0x08] 	; p_offset
-	mov r9d,  [rsi + 0x10]	; p_vaddr -- address of the segment (physical?)
-	mov r10d, [rsi + 0x20]	; p_filesz -- size of the segment
+	mov r8,  [rsi + 0x08] 	; p_offset
+	mov r9,  [rsi + 0x10]	; p_vaddr -- address of the segment (physical?)
+	mov r10, [rsi + 0x20]	; p_filesz -- size of the segment
 
-	; Copy the data so the program header says.
+	; Save registers
 	mov rbp, rsi	; save rsi and rcx
 	mov r15, rcx
 
@@ -133,13 +133,22 @@ kernel_load:
 	mov rcx, r10						; count of bytes (p_filesz)
 	rep movsb
 
-	mov rcx, r15	; restore rsi and rcx
+	; Restore registers
+	mov rcx, r15
 	mov rsi, rbp	
 
 .next:
 	add rsi, 0x20	; 0x20 == ph table entry size
 	dec rcx
 	jnz .ph_loop
+
+	; Set up the stack.
+	mov rsp, 0x30f000
+
+	 ;jmp $
+	; Jump to kernel
+	mov rax, [0x20000 + kernel + 0x18] ; e_entry -- entry point
+	jmp rax
 
 	jmp $
 
