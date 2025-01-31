@@ -39,31 +39,31 @@ start_32:
 	mov es, ax
 	mov ss, ax
 
-set_up_page_tables:
-	mov eax, page_table.level3
-	or eax, 0b11 ; present + writable
-	mov [page_table.level4], eax
+; set_up_page_tables:
+; 	mov eax, page_table.level3 + 0x20000
+; 	or eax, 0b11 ; present + writable
+; 	mov [page_table.level4 + 0x20000], eax
 
-	mov eax, page_table.level2
-	or eax, 0b11 ; present + writable
-	mov [page_table.level3], eax
+; 	mov eax, page_table.level2 + 0x20000
+; 	or eax, 0b11 ; present + writable
+; 	mov [page_table.level3 + 0x20000], eax
 
-	; Map each level2 entry to a huge 2MiB page.
-	mov ecx, 0
-.map_p2_table:
-	; Map ecx-th P2 entry to a huge page that starts at address 2MiB * ECX.
-	mov eax, 1 << 21 ; 2MiB
-	mul ecx ; start address of ECX-th page
-	or eax, 0b10000011 ; huge + present + writable
-	mov [page_table.level2 + ecx * 8], eax ; map ECX-th entry
+; 	; Map each level2 entry to a huge 2MiB page.
+; 	mov ecx, 0
+; .map_p2_table:
+; 	; Map ecx-th P2 entry to a huge page that starts at address 2MiB * ECX.
+; 	mov eax, 1 << 21 ; 2MiB
+; 	mul ecx ; start address of ECX-th page
+; 	or eax, 0b10000011 ; huge + present + writable
+; 	mov [0x20000 + page_table.level2 + ecx * 8], eax ; map ECX-th entry
 
-	inc ecx
-	cmp ecx, 512
-	jne .map_p2_table
+; 	inc ecx
+; 	cmp ecx, 512
+; 	jne .map_p2_table
 
 enable_paging:
 	; Load level4 table to CR3 register.
-	mov eax, page_table.level4
+	mov eax, (page_table.level4 - $$) + 0x20000
 	mov cr3, eax
 
 	; Enable PAE flag in CR4 (physical address extension).
@@ -123,10 +123,19 @@ kernel_load:
 	mov r8,  [rsi + 0x08] 	; p_offset
 	mov r9,  [rsi + 0x10]	; p_vaddr -- address of the segment (physical?)
 	mov r10, [rsi + 0x20]	; p_filesz -- size of the segment
+	mov r11, [rsi + 0x28]	; p_memsz
+
+
 
 	; Save registers
 	mov rbp, rsi	; save rsi and rcx
 	mov r15, rcx
+
+	; zero memory
+	mov rdi, r9
+	mov rcx, r11
+	mov al, 0
+	rep stosb
 
 	lea rsi, [0x20000 + kernel + r8d]	; source (kernel start + p_offset)
 	mov rdi, r9							; destination  (p_vaddr)
@@ -138,7 +147,7 @@ kernel_load:
 	mov rsi, rbp	
 
 .next:
-	add rsi, 0x20	; 0x20 == ph table entry size
+	add rsi, 0x38	; 0x20 == ph table entry size
 	dec rcx
 	jnz .ph_loop
 
@@ -200,13 +209,30 @@ gdt_64:
 
 align 4096
 
+; page_table:
+; .level4:
+; 	times 512 dq 0
+; .level3:
+; 	times 512 dq 0
+; .level2:
+; 	times 512 dq 0
+
+
 page_table:
 .level4:
-	times 512 dq 0
+	dq 1 | (1 << 1) | (.level3 - $$ + 0x20000)
+	times 511 dq 0x0
 .level3:
-	times 512 dq 0
+	dq 1 | (1 << 1) | (.level2 - $$ + 0x20000)
+	times 511 dq 0x0
 .level2:
-	times 512 dq 0
+	; preprocessor loop dance... - mapping first 1GB == 512 * 0x200000 bytes
+	; 0x83 == 0x1 + 0x2 + 0x80 ---> Present/Writeablei/2MB page
+	%assign i 0
+	%rep 512
+	dq 0x200000*i+0x83
+	%assign i i+1
+	%endrep
 	
 
 times (512 - ($ - $$) % 512) db 0
