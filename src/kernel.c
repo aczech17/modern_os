@@ -29,6 +29,11 @@ void kernel_main(uint64_t kernel_address)
     write_hex(&vga_buffer, kernel_address, false);
 
     write_string(&vga_buffer, "\nTEST");
+    for (uint64_t i = 0; ; ++i)
+    {
+        write_string(&vga_buffer, "\n");
+        write_hex(&vga_buffer, i, true);
+    }
 
     for (;;);
 }
