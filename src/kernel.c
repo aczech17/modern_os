@@ -28,6 +28,6 @@ void kernel_main(u64 kernel_address)
     write_string(&vga_buffer, ",\nczyli po ludzku ");
     write_dec(&vga_buffer, kernel_address);
     write_string(&vga_buffer, ".\n");
-
-    // for (;;);
+    
+    for (;;);
 }
