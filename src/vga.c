@@ -36,10 +36,6 @@ void clear_screen(Vga_buffer* buffer)
         *dest = ' ';
         *(dest + 1) = buffer->color;
     }
-    /*
-        Could be a for loop for rows and cols and calling write_char_vga but that would be slower, I think.
-    */
-
 
     buffer->row = 0;
     buffer->col = 0;
@@ -89,16 +85,56 @@ void write_hex(Vga_buffer* buffer, u64 number, bool strip)
     write_string(buffer, "0x");
 
     // 16 nibbles
-    for (int i = 15; i >= 0; --i)
+    char digits[17] = {0};
+    for (int i = 0; i < 16; ++i)
     {
-        u64 nibble = ((number >> (i * 4)) & 0xF);
-        if (nibble == 0 && strip)
-            continue;
-
-        strip = false;
+        int shift = (15 - i) * 4;
+        u64 nibble = ((number >> shift) & 0xF);
         char nibble_rep = "0123456789ABCDEF"[nibble];
-        write_char_vga(nibble_rep, buffer->row, buffer->col, buffer->color);
-        ++buffer->col;
+        digits[i] = nibble_rep;
     }
+
+    if (strip)
+    {
+        int i;
+        for (i = 0; digits[i] == '0'; ++i); // skip '0' digits
+
+        write_string(buffer, &digits[i]);
+        return;
+    }
+
+    write_string(buffer, digits);
 }
 
+void write_dec(Vga_buffer* buffer, u64 number)
+{
+    if (number == 0)
+    {
+        write_string(buffer, "0");
+    }
+
+    char digits[20] = {0}; // (2^64 - 1) has 19 digits.
+
+    int i = 0;
+    while (number > 0)
+    {
+        digits[i++] = (number % 10) + '0';
+        number /= 10;
+    }
+    
+    // reverse digit buffer
+    int left = 0;
+    int right = i - 1;
+    while (left < right)
+    {
+        // swap left and right
+        char tmp = digits[left];
+        digits[left] = digits[right];
+        digits[right] = tmp;
+
+        ++left;
+        --right;
+    }
+
+    write_string(buffer, digits);
+}
