@@ -40,6 +40,7 @@ static void scroll_down(Vga_buffer* buffer)
     }
 
     buffer->row = VGA_HEIGHT - 1;
+    buffer->row %= VGA_WIDTH;
 }
 
 void clear_screen(Vga_buffer* buffer)
