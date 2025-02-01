@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
-kernel_sources = ['src/kernel.c', 'src/vga.c']
+kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c']
 
 
 def assemble_asm(source, output):
