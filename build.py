@@ -26,7 +26,7 @@ def calculate_sectors(file_paths):
 
     print(f"Stage 2 and kernel size is {all_file_sizes} B.")
     sectors = (all_file_sizes + 511) // 512  # Round up to 512.
-    print(f"That makes up to {sectors} sectors.")
+    print(f"That adds up to {sectors} sectors.")
 
     with open('out/sectors.inc', 'w') as f:
         f.write(f"SECTORS_TO_READ equ {sectors}\n")
