@@ -19,14 +19,5 @@ void kernel_main(u64 kernel_address)
     write_string(&vga_buffer, kernel_location_msg);
     write_hex(&vga_buffer, kernel_address, false);
 
-    write_string(&vga_buffer, "\nTEST\n");
-    write_hex(&vga_buffer, (u64)string_len(kernel_location_msg), true);
-    for (u64 i = 0; ; ++i)
-    {
-        write_string(&vga_buffer, "\n");
-        write_hex(&vga_buffer, i, true);
-    }
-
-
     for (;;);
 }

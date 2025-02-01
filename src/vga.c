@@ -15,23 +15,9 @@ static void write_char_vga(char c, size_t row, size_t col, char color)
     *(dest + 1) = color;
 }
 
-static char get_char_vga(size_t row, size_t col)
-{
-    char* addr = VGA_ADDRESS + (row * VGA_WIDTH + col) * 2;
-    return *addr;
-}
-
 static void scroll_down(Vga_buffer* buffer)
 {
-    for (size_t row = 0; row < VGA_HEIGHT - 1; ++row)
-    {
-        // copy the row from the bottom
-        for (size_t col = 0; col < VGA_WIDTH; ++col)
-        {
-            char c = get_char_vga(row + 1, col);
-            write_char_vga(c, row, col, buffer->color);
-        }
-    }
+    memory_copy(VGA_ADDRESS, VGA_ADDRESS + VGA_WIDTH * 2, (VGA_SIZE - VGA_WIDTH * 2));
 
     // Clear the bottom row.
     for (size_t col = 0; col < VGA_WIDTH; ++col)
@@ -40,7 +26,7 @@ static void scroll_down(Vga_buffer* buffer)
     }
 
     buffer->row = VGA_HEIGHT - 1;
-    buffer->row %= VGA_WIDTH;
+    buffer->col = 0;
 }
 
 void clear_screen(Vga_buffer* buffer)
