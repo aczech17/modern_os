@@ -13,7 +13,7 @@ void kernel_main(u64 kernel_address)
     };
 
     clear_screen(&vga_buffer);
-    write_string(&vga_buffer, "Super system kurwo\n");
+    write_string(&vga_buffer, "Super system kurwo!\n");
 
     vga_buffer.color = 0x14;
     write_string(&vga_buffer, "Brawo, Robercik!\n");

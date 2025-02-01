@@ -146,8 +146,8 @@ kernel_load:
 	jnz .ph_loop
 
 	; Set up the stack.
-	mov rsp, 0x30f000
-
+	mov rbp, 0x30f000
+	mov rsp, rbp
 	 
 	mov rdi, r14						; Give kernel start address to the kernel.
 	mov rax, [0x20000 + kernel + 0x18] 	; e_entry -- entry point
