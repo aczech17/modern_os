@@ -11,9 +11,9 @@ typedef struct
     char color;
 }Vga_buffer;
 
-void clear_screen(Vga_buffer*);
+void clear_screen(char color);
 void write_string(Vga_buffer*, const char* text);
-void write_hex(Vga_buffer*, u64 number, bool strip);
+void write_hex(Vga_buffer*, u64 number, bool digit_uppercase, bool strip);
 void write_dec(Vga_buffer* buffer, u64 number);
 
 #endif // VGA_H

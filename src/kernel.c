@@ -5,29 +5,14 @@
 
 void kernel_main(u64 kernel_address)
 {
-    Vga_buffer vga_buffer =
-    {
-        .row = 0,
-        .col = 0,
-        .color = 0x07, // gray on black
-    };
+    clear_screen(0x07);
 
-    clear_screen(&vga_buffer);
-    write_string(&vga_buffer, "Super system kurwo!\n");
+    const char* welcome_message = "Super system kurwo!";
+    print_formatted("%s\nKernel jest pod adresem %x,\nczyli po ludzku %d.\n\n",
+                    welcome_message, kernel_address, kernel_address);
 
-    vga_buffer.color = 0x14;
-    write_string(&vga_buffer, "Brawo, Robercik!\n");
+    u64 number = 0xdeadbeef;
+    print_formatted("%x to inaczej %X\n", number, number);
 
-    vga_buffer.color = 0x4e;
-    write_string(&vga_buffer, "Hej, Jaga gol!\n");
-
-    vga_buffer.color = 0x07;
-    write_string(&vga_buffer, "Kernel jest pod adresem ");
-    write_hex(&vga_buffer, kernel_address, false);
-
-    write_string(&vga_buffer, ",\nczyli po ludzku ");
-    write_dec(&vga_buffer, kernel_address);
-    write_string(&vga_buffer, ".\n");
-    
     for (;;);
 }

@@ -29,16 +29,13 @@ static void scroll_down(Vga_buffer* buffer)
     buffer->col = 0;
 }
 
-void clear_screen(Vga_buffer* buffer)
+void clear_screen(char color)
 {
     for (char* dest = VGA_ADDRESS; dest < VGA_ADDRESS + VGA_SIZE; dest += 2)
     {
         *dest = ' ';
-        *(dest + 1) = buffer->color;
+        *(dest + 1) = color;
     }
-
-    buffer->row = 0;
-    buffer->col = 0;
 }
 
 void write_string(Vga_buffer* buffer, const char* text)
@@ -74,7 +71,7 @@ void write_string(Vga_buffer* buffer, const char* text)
     }
 }
 
-void write_hex(Vga_buffer* buffer, u64 number, bool strip)
+void write_hex(Vga_buffer* buffer, u64 number, bool digit_uppercase, bool strip)
 {
     if (number == 0 && strip)
     {
@@ -90,7 +87,7 @@ void write_hex(Vga_buffer* buffer, u64 number, bool strip)
     {
         int shift = (15 - i) * 4;
         u64 nibble = ((number >> shift) & 0xF);
-        char nibble_rep = "0123456789ABCDEF"[nibble];
+        char nibble_rep = digit_uppercase ? "0123456789ABCDEF"[nibble] : "0123456789abcdef"[nibble];
         digits[i] = nibble_rep;
     }
 
