@@ -36,9 +36,9 @@ def calculate_sectors(file_paths):
 def create_disk_image():
     print("Joining the ELF files...")
     with open("out/os.img", "wb") as img_file:
-        with open("out/stage1.elf", "rb") as stage1:
+        with open("out/stage1.bin", "rb") as stage1:
             img_file.write(stage1.read())
-        with open("out/stage2.elf", "rb") as stage2:
+        with open("out/stage2.bin", "rb") as stage2:
             img_file.write(stage2.read())
         with open("out/kernel.elf", "rb") as kernel:
             img_file.write(kernel.read())
@@ -65,14 +65,14 @@ def main():
     os.makedirs('out', exist_ok=True)
 
     # Assemble stage 2 and compile the kernel.
-    assemble_asm(bootloader_sources[1], 'out/stage2.elf')
+    assemble_asm(bootloader_sources[1], 'out/stage2.bin')
     compile_kernel(kernel_sources, 'out/kernel.elf')
 
     # Calculate how many sectors do they take.
-    calculate_sectors(['out/stage2.elf', 'out/kernel.elf'])
+    calculate_sectors(['out/stage2.bin', 'out/kernel.elf'])
 
     # Assemble stage 1
-    assemble_asm(bootloader_sources[0], 'out/stage1.elf')
+    assemble_asm(bootloader_sources[0], 'out/stage1.bin')
 
     # Join the elf files to the final OS image.
     create_disk_image()
