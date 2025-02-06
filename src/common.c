@@ -26,12 +26,13 @@ void memory_set(char* dst, char value, size_t count)
 void print_formatted(const char* format, ...)
 {
     u64 number; // Define it here, because switch is dumb.
+    const char gray_on_black = 0x07;
 
     static Vga_buffer vga =
     {
         .row = 0,
         .col = 0,
-        .color = 0x07, // gray on black
+        .color = gray_on_black,
     };
 
     va_list args;
@@ -64,6 +65,10 @@ void print_formatted(const char* format, ...)
                     number = va_arg(args, u64);
                     write_hex(&vga, number, true, true);
                     break;
+
+                case 'z': // color switch
+                    vga.color = (char)va_arg(args, int);
+                    break;
                 
                 default:
                     break;
@@ -80,4 +85,6 @@ void print_formatted(const char* format, ...)
     }
 
     va_end(args);
+
+    vga.color = gray_on_black;
 }
