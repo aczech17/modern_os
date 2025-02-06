@@ -18,7 +18,7 @@ start:
 	mov cl, 2				; sector 2 (they start from 1)
 	mov dh, 0				; head number 0, they start from 0 (sic!)
 	
-	int 13h
+	int 0x13
 	jc error
 	
 

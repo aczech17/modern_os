@@ -23,7 +23,7 @@ void memory_set(char* dst, char value, size_t count)
         dst[i] = value;
 }
 
-void print_formatted(const char* format, ...)
+void print(const char* format, ...)
 {
     u64 number; // Define it here, because switch is dumb.
     const char gray_on_black = 0x07;
