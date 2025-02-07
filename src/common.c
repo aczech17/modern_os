@@ -13,8 +13,8 @@ size_t string_len(const char* text)
 
 void memory_copy(char* dst, const char* src, size_t count)
 {
-    for (size_t i = 0; i < count; ++i)
-        dst[i] = src[i];
+    while (count--)
+        *dst++ = *src++;
 }
 
 void memory_set(char* dst, char value, size_t count)
@@ -25,7 +25,10 @@ void memory_set(char* dst, char value, size_t count)
 
 void print(const char* format, ...)
 {
-    u64 number; // Define it here, because switch is dumb.
+    // Define number variables here, because we cannot do it inside the switch instruction.
+    u64 number_u64;
+    i64 number_i64;
+
     const char gray_on_black = 0x07;
 
     static Vga_buffer vga =
@@ -38,7 +41,7 @@ void print(const char* format, ...)
     va_list args;
     va_start(args, format);
 
-    while (*format != 0)
+    for (; *format != 0; ++format)
     {
         if (*format == '%')
         {
@@ -46,10 +49,25 @@ void print(const char* format, ...)
 
             switch (*format)
             {
-                case 'd':
                 case 'i':
-                    number = va_arg(args, u64);
-                    write_dec(&vga, number);
+                case 'd':
+                    number_i64 = va_arg(args, i64);
+                    write_dec_signed(&vga, number_i64);
+                    break;
+                    
+                case 'u':
+                    number_u64 = va_arg(args, u64);
+                    write_dec_unsigned(&vga, number_u64);
+                    break;
+
+                case 'x':
+                    number_u64 = va_arg(args, u64);
+                    write_hex(&vga, number_u64, false, true);
+                    break;
+
+                case 'X':
+                    number_u64 = va_arg(args, u64);
+                    write_hex(&vga, number_u64, true, true);
                     break;
 
                 case 's':
@@ -57,13 +75,8 @@ void print(const char* format, ...)
                     write_string(&vga, str);
                     break;
 
-                case 'x':
-                    number = va_arg(args, u64);
-                    write_hex(&vga, number, false, true);
-                    break;
-                case 'X':
-                    number = va_arg(args, u64);
-                    write_hex(&vga, number, true, true);
+                case 'c':
+                    write_char(&vga, (char)va_arg(args, int));
                     break;
 
                 case 'z': // color switch
@@ -71,17 +84,16 @@ void print(const char* format, ...)
                     break;
                 
                 default:
+                    write_char(&vga, '%');
+                    --format;
                     break;
             }
         }
         else
         {
-            char str[2] = {0, 0};
-            str[0] = *format;
-            write_string(&vga, str);
+            char c = *format;
+            write_char(&vga, c);
         }
-
-        ++format;
     }
 
     va_end(args);

@@ -38,36 +38,47 @@ void clear_screen(char color)
     }
 }
 
+void write_char(Vga_buffer* buffer, const char c)
+{
+    if (c == '\n')
+    {
+        ++buffer->row;
+        buffer->col = 0;
+
+        if (buffer->row >= VGA_HEIGHT)
+        {
+            scroll_down(buffer);
+        }
+
+        return;
+    }
+
+    if (c == '\r')
+    {
+        buffer->col = 0;
+        return;
+    }
+
+    if (buffer->col >= VGA_WIDTH)
+    {
+        ++buffer->row;
+        buffer->col = 0;
+
+        if (buffer->row >= VGA_HEIGHT)
+        {
+            scroll_down(buffer);
+        }
+    }
+
+    write_char_vga(c, buffer->row, buffer->col, buffer->color);
+    ++buffer->col;
+}
+
 void write_string(Vga_buffer* buffer, const char* text)
 {
     for (char* src = (char*)text; *src != 0; ++src)
     {
-        if (buffer->col >= VGA_WIDTH)
-        {
-            ++buffer->row;
-            buffer->col = 0;
-
-            if (buffer->row >= VGA_HEIGHT)
-            {
-                scroll_down(buffer);
-            }
-        }
-
-        if (*src == '\n')
-        {
-            ++buffer->row;
-            buffer->col = 0;
-
-            if (buffer->row >= VGA_HEIGHT)
-            {
-                scroll_down(buffer);
-            }
-
-            continue;
-        }
-
-        write_char_vga(*src, buffer->row, buffer->col, buffer->color);
-        ++buffer->col;
+        write_char(buffer, *src);
     }
 }
 
@@ -103,11 +114,11 @@ void write_hex(Vga_buffer* buffer, u64 number, bool digit_uppercase, bool strip)
     write_string(buffer, digits);
 }
 
-void write_dec(Vga_buffer* buffer, u64 number)
+void write_dec_unsigned(Vga_buffer* buffer, u64 number)
 {
     if (number == 0)
     {
-        write_string(buffer, "0");
+        write_char(buffer, '0');
     }
 
     char digits[20] = {0}; // (2^64 - 1) has 19 digits.
@@ -134,4 +145,18 @@ void write_dec(Vga_buffer* buffer, u64 number)
     }
 
     write_string(buffer, digits);
+}
+
+void write_dec_signed(Vga_buffer* buffer, i64 number)
+{
+    // Min i64 is a separate case, because we can't get an absolute value of min i64.
+    const i64 min_i64 = (i64)0xFFFFFFFFFFFFFFFF;
+    if (number == min_i64)
+    {
+        write_string(buffer, "-9223372036854775808");
+        return;
+    }
+
+    write_char(buffer, '-');
+    write_dec_unsigned(buffer, -number);
 }
