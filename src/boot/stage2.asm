@@ -145,10 +145,13 @@ kernel_load:
 	dec rcx
 	jnz .ph_loop
 
-	; Set up the stack.
-	mov rbp, 0x30f000
+
+set_up_stack:
+	mov rbp, stack_bottom + 0x20000
 	mov rsp, rbp
 	 
+
+jump_to_kernel:
 	mov rdi, r14						; Give kernel start address to the kernel.
 	mov rax, [0x20000 + kernel + 0x18] 	; e_entry -- entry point
 	call rax							; Finally jump to the kernel.
@@ -210,6 +213,12 @@ page_table:
 	times 512 dq 0
 .level2:
 	times 512 dq 0
+
+
+stack_bottom:
+	times 16 * 1024 db 0
+stack_top:
+
 
 times (512 - ($ - $$) % 512) db 0
 kernel:
