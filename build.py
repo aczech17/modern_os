@@ -34,7 +34,7 @@ def calculate_sectors(file_paths):
     print("SECTORS_TO_READ written to out/sectors.inc")
 
 def create_disk_image():
-    print("Joining the ELF files...")
+    print("Joining the OS files...")
     with open("out/os.img", "wb") as img_file:
         with open("out/stage1.bin", "rb") as stage1:
             img_file.write(stage1.read())
@@ -74,7 +74,7 @@ def main():
     # Assemble stage 1
     assemble_asm(bootloader_sources[0], 'out/stage1.bin')
 
-    # Join the elf files to the final OS image.
+    # Join the OS files to the final OS image.
     create_disk_image()
 
     print_success_message()

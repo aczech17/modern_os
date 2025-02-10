@@ -20,7 +20,7 @@ stage2:
 	mov ss, ax
 	mov sp, 0
 
-	lgdt [gdt_32_addr]
+	lgdt [gdt_32.addr]
 
 	; Set 0 bit in the CR0 to enable protected mode.
 	mov eax, cr0
@@ -81,7 +81,7 @@ enable_paging:
 	or eax, 1 << 31
 	mov cr0, eax
 
-	lgdt [gdt_64_addr]
+	lgdt [gdt_64.addr]
 	jmp dword 0x8:start_64
 
 	[bits 64]
@@ -95,14 +95,14 @@ start_64:
     
 	; Now let's load the kernel.
 kernel_load:
-	mov rsi, [kernel + 0x20]			; Load e_phof -- start of the program header table.
-												; Now in RSI we have the offset from the start of the kernel file,
-												; but we want the offset in the memory, so
-	add rsi, kernel					; we add to RSI the size of the stage 2.
+	mov rsi, [kernel + 0x20]	; Load e_phof -- start of the program header table.
+								; Now in RSI we have the offset from the start of the kernel file,
+								; but we want the offset in the memory, so
+	add rsi, kernel				; we add to RSI the size of the stage 2.
 
 	movzx ecx, word [kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
 
-	cld									; Clear direction flag for future rep movsb.
+	cld			; Clear direction flag for future rep movsb.
 	mov r14, 0	; Kernel start address  -- first PT_LOAD v_addr. At first, it's 0 (unset).
 .ph_loop:
 	mov eax, [rsi + 0]	; ph_type
@@ -110,42 +110,42 @@ kernel_load:
 	jne .next
 	
 	mov r8,  [rsi + 0x08] 	; p_offset
-	mov r9,  [rsi + 0x10]	; p_vaddr -- address of the segment (physical?)
-	mov r10, [rsi + 0x20]	; p_filesz -- size of the segment
-	mov r11, [rsi + 0x28]	; p_memsz
+	mov r9,  [rsi + 0x10]	; p_vaddr -- address of the segment
+	mov r10, [rsi + 0x20]	; p_filesz -- size of the segment in the kernel file
+	mov r11, [rsi + 0x28]	; p_memsz  -- size of the segment in memory
 
-	test r14, r14	; Test if already set.
+	test r14, r14	; Test if kernel start address is already set.
 	jnz .skip
 	mov r14, r9
 	.skip:
 
-	; Save registers
-	mov rbp, rsi	; save rsi and rcx
+	; Save registers (RSI and RCX)
+	mov rbp, rsi
 	mov r15, rcx
 
 	; zero memory
-	mov rdi, r9
-	mov rcx, r11
-	mov al, 0
+	mov rdi, r9		; set destination address (p_vaddr)
+	mov rcx, r11	; set segment size (p_memsz)
+	mov al, 0		; value is 0
 	rep stosb
 
 	lea rsi, [kernel + r8d]	; source (kernel start + p_offset)
-	mov rdi, r9							; destination  (p_vaddr)
-	mov rcx, r10						; count of bytes (p_filesz)
+	mov rdi, r9				; destination  (p_vaddr)
+	mov rcx, r10			; count of bytes (p_filesz)
 	rep movsb
 
-	; Restore registers
+	; Restore registers (RCX and RSI)
 	mov rcx, r15
 	mov rsi, rbp	
 
 .next:
-	add rsi, 0x38
+	add rsi, 0x38	; 0x38 -- program header size
 	dec rcx
 	jnz .ph_loop
 
 
 set_up_stack:
-	mov rbp, stack_bottom
+	mov rbp, stack.bottom
 	mov rsp, rbp
 
 jump_to_kernel:
@@ -156,12 +156,7 @@ jump_to_kernel:
 	jmp $
 
 
-
-gdt_32_addr:
-	dw (gdt_32.end - gdt_32) - 1
-	dd gdt_32
 align 32
-
 gdt_32:
 	; Flat mode, base = 0x0, limit = 0xFFFFFFFF
 .null:
@@ -169,8 +164,8 @@ gdt_32:
 	dd 0
 .code:
 	dd 0x0000_FFFF  ; base (15 - 0) limit (15 - 0)
-	dd    (0b1010 << 8) 					    | (1 << 12) 		|   (1 << 15) | (0xF << 16)   | (1 << 22)     | (1 << 23)
-	;  code nonconforming readable notaccessed, descriptor type=code   present    limit(19-16)   32 bit segment  granularity
+	dd    (0b1010 << 8) 					    | (1 << 12) 		|  (1 << 15) | (0xF << 16)   | (1 << 22)     | (1 << 23)
+	;  code nonconforming readable notaccessed, descriptor type=code   present     limit(19-16)    32 bit segment  granularity
 .data:
 	dd 0xFFFF  ; segment limit
 	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 22) | (1 << 23)
@@ -178,12 +173,12 @@ gdt_32:
 	dd 0
 	dd 0
 .end:
+.addr:
+	dw (.end - gdt_32) - 1
+	dd gdt_32
 
-gdt_64_addr:
-	dw (gdt_64.end - gdt_64) - 1
-	dd gdt_64
+
 align 32
-
 gdt_64:
 	; Flat mode again
 .null:
@@ -200,10 +195,13 @@ gdt_64:
 	dd 0
 	dd 0
 .end:
+.addr:
+	dw (.end - gdt_64) - 1
+	dd gdt_64
+
 
 
 align 4096
-
 page_table:
 .level4:
 	times 512 dq 0
@@ -212,11 +210,10 @@ page_table:
 .level2:
 	times 512 dq 0
 
-
-stack_bottom:
+stack:
+.bottom:
 	times 16 * 1024 db 0
-stack_top:
-
+.top:
 
 times (512 - ($ - $$) % 512) db 0
 kernel:
