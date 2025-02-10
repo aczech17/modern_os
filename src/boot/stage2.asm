@@ -63,7 +63,7 @@ set_up_page_tables:
 
 enable_paging:
 	; Load level4 table to CR3 register.
-	mov eax, (page_table.level4 - $$) + 0x20000
+	mov eax, page_table.level4 + 0x20000
 	mov cr3, eax
 
 	; Enable PAE flag in CR4 (physical address extension).
