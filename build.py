@@ -62,6 +62,13 @@ def main():
         clean_all()
         return
 
+    if sys.platform.startswith("win"):
+        print("WARNING: Compiling this code on Windows may be a failure. You probably need a cross-compiler " +
+        "to compile the code to ELF format.")
+        input("Press any key to compile though.")
+        print()
+
+
     os.makedirs('out', exist_ok=True)
 
     # Assemble stage 2 and compile the kernel.
