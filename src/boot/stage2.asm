@@ -94,7 +94,7 @@ start_64:
 
     
 	; Now let's load the kernel.
-kernel_load:
+load_kernel:
 	mov rsi, [kernel + 0x20]	; Load e_phof -- start of the program header table.
 								; Now in RSI we have the offset from the start of the kernel file,
 								; but we want the offset in the memory, so
@@ -103,7 +103,6 @@ kernel_load:
 	movzx ecx, word [kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
 
 	cld			; Clear direction flag for future rep movsb.
-	mov r14, 0	; Kernel start address  -- first PT_LOAD v_addr. At first, it's 0 (unset).
 .ph_loop:
 	mov eax, [rsi + 0]	; ph_type
 	cmp eax, 1			; Check if PT_LOAD, if not then ignore.
@@ -114,10 +113,6 @@ kernel_load:
 	mov r10, [rsi + 0x20]	; p_filesz -- size of the segment in the kernel file
 	mov r11, [rsi + 0x28]	; p_memsz  -- size of the segment in memory
 
-	test r14, r14	; Test if kernel start address is already set.
-	jnz .skip
-	mov r14, r9
-	.skip:
 
 	; Save registers (RSI and RCX)
 	mov rbp, rsi
@@ -129,6 +124,7 @@ kernel_load:
 	mov al, 0		; value is 0
 	rep stosb
 
+	; load ELF section to memory
 	lea rsi, [kernel + r8d]	; source (kernel start + p_offset)
 	mov rdi, r9				; destination  (p_vaddr)
 	mov rcx, r10			; count of bytes (p_filesz)
@@ -149,9 +145,13 @@ set_up_stack:
 	mov rsp, rbp
 
 jump_to_kernel:
-	mov rdi, r14				; Give kernel start address to the kernel.
-	mov rax, [kernel + 0x18]	; e_entry -- entry point
-	call rax					; Finally jump to the kernel.
+	; Give program header table to the kernel.
+	mov rdi, [kernel + 0x20]
+	add rdi, kernel
+
+	movzx rsi, word [kernel + 0x38]	; e_phnum -- numer of ph entries.
+	mov rax, [kernel + 0x18]		; e_entry -- entry point
+	call rax						; Finally jump to the kernel.
 
 	jmp $
 
@@ -210,10 +210,12 @@ page_table:
 .level2:
 	times 512 dq 0
 
+section .bss
 stack:
 .bottom:
-	times 16 * 1024 db 0
+	resb 16 * 1024
 .top:
 
+section .text
 times (512 - ($ - $$) % 512) db 0
 kernel:
