@@ -269,9 +269,9 @@ page_table:
 
 section .bss
 stack:
-.bottom:
-	resb 16 * 1024
 .top:
+	resb 16 * 1024
+.bottom:
 
 memory_map_buffer:
 .count:
