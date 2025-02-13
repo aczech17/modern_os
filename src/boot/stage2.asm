@@ -1,3 +1,5 @@
+SMAP equ 0x0534D4150
+
 [bits 16]
 [org 0x20000]
 stage2:
@@ -8,6 +10,57 @@ stage2:
 	in al, 0x92
 	or al, 2
 	out 0x92, al
+
+map_memory:
+	mov di, memory_map_buffer.data
+	mov ebx, 0
+	mov bp, 0	; BP -- entry count
+	mov edx, SMAP
+	mov eax, 0xE820
+	mov [es:di + 20], dword 1	; force a valid ACPI 3.X entry
+	mov ecx, 24		; ask for 24 bytes
+	int 0x15
+	jc .fail
+
+	mov edx, SMAP ; Some BIOSES trash this register.
+	cmp eax, edx  ; On success, EAX is set to SMAP.
+	jne .fail
+
+	test ebx, ebx ; If EBX == 0, the list is only 1 entry long (worthless).
+	je .fail
+
+	jmp .jmpin
+
+.e820lp:
+	mov eax, 0xE820	; EAX is trashed every int 0x15 call.
+	mov [es:di + 20], dword 1	; force a valid ACPI 3.X entry
+	mov ecx, 24		; ask for 24 bytes again
+	int 0x15
+
+	jc .e820f		; If carry is set, then the end is reached.
+	mov edx, SMAP	; Trashing may occur again.
+.jmpin:
+	jcxz .skipent
+	cmp cl, 20 	; got a 24 byte ACPI 3.X response?
+	jbe .notext
+	test byte [es:di + 20], 1	; if so: is the "ignore this data" bit clear?
+	je .skipent
+.notext:
+	mov ecx, [es:di + 8]	; get lower u32 of memory region length
+	or ecx, [es:di + 12]	; "or" it with upper u32 to test for zero
+	jz .skipent				; if u64 length is zero, skip entry
+	inc bp					; got a good entry, ++count, move to the next storage spot
+	add di, 24
+.skipent:
+	test ebx, ebx ; if EBX resets to 0, list is complete
+	jne .e820lp
+.e820f:
+	mov [es:memory_map_buffer.count], bp ; store the entry count
+	clc	; clear carry flag
+	jmp .done
+.fail:
+	jmp $
+.done:
 
     cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
 
@@ -150,6 +203,10 @@ jump_to_kernel:
 	add rdi, kernel
 
 	movzx rsi, word [kernel + 0x38]	; e_phnum -- numer of ph entries.
+
+	mov rdx, memory_map_buffer.data
+	movzx rcx, word [memory_map_buffer.count]
+
 	mov rax, [kernel + 0x18]		; e_entry -- entry point
 	call rax						; Finally jump to the kernel.
 
@@ -215,6 +272,12 @@ stack:
 .bottom:
 	resb 16 * 1024
 .top:
+
+memory_map_buffer:
+.count:
+	resb 4
+.data:
+	resb 128 * 24
 
 section .text
 times (512 - ($ - $$) % 512) db 0
