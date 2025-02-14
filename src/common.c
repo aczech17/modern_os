@@ -79,8 +79,11 @@ void print(const char* format, ...)
                     write_char(&vga, (char)va_arg(args, int));
                     break;
 
-                case 'z': // color switch
+                case 'Z': // color set
                     vga.color = (char)va_arg(args, int);
+                    break;
+                case 'z': // color reset
+                    vga.color = gray_on_black;
                     break;
                 
                 default:
@@ -97,6 +100,4 @@ void print(const char* format, ...)
     }
 
     va_end(args);
-
-    vga.color = gray_on_black;
 }

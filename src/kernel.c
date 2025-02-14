@@ -24,7 +24,7 @@ void print_memory_size(u64 memsize)
     {
         if ((memsize >> 10) == 0)
         {
-            print("%z%u%s", 0x0A, memsize, units[i]);
+            print("%u%s", memsize, units[i]);
             break;
         }
 
@@ -35,7 +35,7 @@ void print_memory_size(u64 memsize)
 void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 {
     clear_screen(0x07);
-    print("%zSuper system kurwo!\n\n", 0x4E);
+    print("%ZSuper system kurwo!\n\n%z", 0x4E);
     
     u64 total_memory_available = 0;
     print("Physical memory sections:\n");
@@ -56,12 +56,13 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
         if (base > 0)
             total_memory_available += size;
     }
-    print("%zTotal memory available ~= ", 0x0A);
+    print("%ZTotal memory available: %XB ~= ", 0x0A, total_memory_available);
     print_memory_size(total_memory_available);
-    print("\n");
+    print("%z\n");
 
     // print("%u\n", total_memory_available);
 
+    u64 frame_memory_available = total_memory_available;
     print("\nKernel sections:\n");
     for (u16 i = 0; i < ph_count; ++i)
     {
@@ -73,7 +74,12 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
         u64 p_memsz = *(u64*)(ph_addr + i * 0x38 + 0x28);
         u64 end = v_addr + p_memsz - 1;
         print("start = %X, end = %X\n", v_addr, end);
+
+        frame_memory_available -= p_memsz;
     }
+    print("%ZMemory available for allocation: %XB ~= ", 0x0A, frame_memory_available);
+    print_memory_size(frame_memory_available);
+    print("%z\n");
     
     for (;;);
 }
