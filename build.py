@@ -33,8 +33,9 @@ def create_disk_image():
             with open(filename, "rb") as f:
                 img_file.write(f.read())
 
-def run_qemu():
-    subprocess.run(['qemu-system-x86_64', '-drive', 'format=raw,file=out/os.img', '-m', '4G'])
+def run_qemu(memory_size):
+    print(f"Running with {memory_size}B of RAM...")
+    subprocess.run(['qemu-system-x86_64', '-drive', 'format=raw,file=out/os.img', '-m', memory_size])
 
 def clean_all():
     subprocess.run(['rm', '-rf', 'out'])
@@ -42,10 +43,10 @@ def clean_all():
 def print_success_message():
     if sys.platform.startswith("win"):
         # Printing green text on Windows is not so easy, so print it normally.
-        print('Done')
+        print('Done\n')
     else:
         # If it's Linux, print green.
-        print('\033[32mDone\033[0m')
+        print('\033[32mDone\033[0m\n')
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "clean":
@@ -71,8 +72,8 @@ def main():
     print_success_message()
 
     if len(sys.argv) > 1 and sys.argv[1] == "run":
-        print('Running...')
-        run_qemu()
+        memory_size = sys.argv[2] if len(sys.argv) > 2 else '4G'
+        run_qemu(memory_size)
 
 if __name__ == '__main__':
     main()
