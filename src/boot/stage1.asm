@@ -1,4 +1,4 @@
-%include "out/sectors.inc" ; count of sectors of the stage2
+%include "out/sectors.inc" ; count of sectors of compiled stage2 and kernel
 
 [org 0x7C00]
 jmp word 0x0000:start ; Make sure we have address 0x0000:0x7C00, NOT 0x07C0:0x0000.

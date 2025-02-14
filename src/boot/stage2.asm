@@ -1,5 +1,5 @@
 SMAP equ 0x0534D4150
-MAP_SECTIONS_COUNT equ 128
+MAX_MAP_SECTIONS_COUNT equ 128
 
 [bits 16]
 [org 0x20000]
@@ -223,7 +223,7 @@ map_sections:
 .count:
 	times 4 db 0
 .entries:
-	times MAP_SECTIONS_COUNT * 24 db 0
+	times MAX_MAP_SECTIONS_COUNT * 24 db 0
 
 align 32
 gdt_32:
