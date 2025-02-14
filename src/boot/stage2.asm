@@ -1,4 +1,5 @@
 SMAP equ 0x0534D4150
+MAP_SECTIONS_COUNT equ 128
 
 [bits 16]
 [org 0x20000]
@@ -11,13 +12,22 @@ stage2:
 	or al, 2
 	out 0x92, al
 
-map_memory:
-	mov di, memory_map_buffer.data
+; set up segment registers
+	mov ax, 0x2000
+	mov ds, ax
+	mov es, ax
+
+	mov ax, 0x1f00
+	mov ss, ax
+	mov sp, 0
+
+detect_memory:
+	mov di, map_sections.entries
 	mov ebx, 0
 	mov bp, 0	; BP -- entry count
 	mov edx, SMAP
 	mov eax, 0xE820
-	mov [es:di + 20], dword 1	; force a valid ACPI 3.X entry
+	mov [di + 20], dword 1	; force a valid ACPI 3.X entry
 	mov ecx, 24		; ask for 24 bytes
 	int 0x15
 	jc .fail
@@ -33,7 +43,7 @@ map_memory:
 
 .e820lp:
 	mov eax, 0xE820	; EAX is trashed every int 0x15 call.
-	mov [es:di + 20], dword 1	; force a valid ACPI 3.X entry
+	mov [di + 20], dword 1	; force a valid ACPI 3.X entry
 	mov ecx, 24		; ask for 24 bytes again
 	int 0x15
 
@@ -43,11 +53,11 @@ map_memory:
 	jcxz .skipent
 	cmp cl, 20 	; got a 24 byte ACPI 3.X response?
 	jbe .notext
-	test byte [es:di + 20], 1	; if so: is the "ignore this data" bit clear?
+	test byte [di + 20], 1	; if so: is the "ignore this data" bit clear?
 	je .skipent
 .notext:
-	mov ecx, [es:di + 8]	; get lower u32 of memory region length
-	or ecx, [es:di + 12]	; "or" it with upper u32 to test for zero
+	mov ecx, [di + 8]	; get lower u32 of memory region length
+	or ecx, [di + 12]	; "or" it with upper u32 to test for zero
 	jz .skipent				; if u64 length is zero, skip entry
 	inc bp					; got a good entry, ++count, move to the next storage spot
 	add di, 24
@@ -55,7 +65,7 @@ map_memory:
 	test ebx, ebx ; if EBX resets to 0, list is complete
 	jne .e820lp
 .e820f:
-	mov [es:memory_map_buffer.count], bp ; store the entry count
+	mov [map_sections.count], bp ; store the entry count
 	clc	; clear carry flag
 	jmp .done
 .fail:
@@ -63,16 +73,6 @@ map_memory:
 .done:
 
     cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
-
-	; set up segment registers
-	mov ax, 0x2000
-	mov ds, ax
-	mov es, ax
-
-	mov ax, 0x1f00
-	mov ss, ax
-	mov sp, 0
-
 	lgdt [gdt_32.addr]
 
 	; Set 0 bit in the CR0 to enable protected mode.
@@ -197,21 +197,33 @@ set_up_stack:
 	mov rbp, stack.bottom
 	mov rsp, rbp
 
+set_kernel_arguments:
+	; Calling convention:
+	; rdi, rsi, rdx, rcx, r8, r9
+
+	mov rdi, map_sections.entries
+	mov rsi, 0
+	mov esi, dword [map_sections.count]
+
+	; Program header table
+	mov rdx, [kernel + 0x20]
+	add rdx, kernel
+
+	; Program header entry count
+	movzx rcx, word [kernel + 0x38]	; e_phnum -- numer of ph entries.
+	
 jump_to_kernel:
-	; Give program header table to the kernel.
-	mov rdi, [kernel + 0x20]
-	add rdi, kernel
-
-	movzx rsi, word [kernel + 0x38]	; e_phnum -- numer of ph entries.
-
-	mov rdx, memory_map_buffer.data
-	movzx rcx, word [memory_map_buffer.count]
-
 	mov rax, [kernel + 0x18]		; e_entry -- entry point
 	call rax						; Finally jump to the kernel.
 
 	jmp $
 
+
+map_sections:
+.count:
+	times 4 db 0
+.entries:
+	times MAP_SECTIONS_COUNT * 24 db 0
 
 align 32
 gdt_32:
@@ -272,12 +284,6 @@ stack:
 .top:
 	resb 16 * 1024
 .bottom:
-
-memory_map_buffer:
-.count:
-	resb 4
-.data:
-	resb 128 * 24
 
 section .text
 times (512 - ($ - $$) % 512) db 0

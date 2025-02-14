@@ -1,11 +1,10 @@
 #include "vga.h"
 #include <stdbool.h>
 
-void kernel_main(u64 ph_addr, u16 ph_count, u64 mmap_addr, u32 mmap_count)
+void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 {
     clear_screen(0x07);
     print("%zSuper system kurwo!\n\n", 0x4E);
-
     
     print("Dostepne sekcje pamieci:\n");
     for (u32 i = 0; i < mmap_count; ++i)
@@ -20,7 +19,7 @@ void kernel_main(u64 ph_addr, u16 ph_count, u64 mmap_addr, u32 mmap_count)
             continue;
 
         u64 end = base + size - 1;
-        print("base = %X, end = %X\n", base, end);
+        print("base = %X, end = %X, type = %X\n", base, end, type);
     }
 
     print("\nKernel zajmuje sekcje:\n");
