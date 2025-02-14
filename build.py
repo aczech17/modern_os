@@ -44,7 +44,7 @@ def create_disk_image():
             img_file.write(kernel.read())
 
 def run_qemu():
-    subprocess.run(['qemu-system-x86_64', '-drive', 'format=raw,file=out/os.img', '-m', '1M'])
+    subprocess.run(['qemu-system-x86_64', '-drive', 'format=raw,file=out/os.img', '-m', '4G'])
 
 def clean_all():
     subprocess.run(['rm', '-rf', 'out'])
