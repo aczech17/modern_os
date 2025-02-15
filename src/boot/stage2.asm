@@ -86,7 +86,14 @@ detect_memory:
 	[bits 32]
 start_32:
 	; Set up the segment registers.
-	mov ax, 0x10
+	;
+	;	15         3  2  1  0
+	;	+------------+--+--+--+
+	;	| GDT index  |TI| CPL |
+	;	+------------+--+--+--+
+
+	; Data segments
+	mov ax, (2 << 3)
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
@@ -140,7 +147,13 @@ enable_paging:
 	[bits 64]
 start_64:
 	; Set up segment registers once again.
-	mov ax, 0x10 ; 0x10 is code segment offset.
+	;
+	;	15         3  2  1  0
+	;	+------------+--+--+--+
+	;	| GDT index  |TI| CPL |
+	;	+------------+--+--+--+
+
+	mov ax, (2 << 3)
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
