@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
-kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c']
+kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/allocator.c']
 linker_script = 'linker.ld'
 
 def assemble_asm(source, output):

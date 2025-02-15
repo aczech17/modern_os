@@ -1,5 +1,5 @@
 SMAP equ 0x0534D4150
-MAX_MAP_SECTIONS_COUNT equ 128
+MAX_MEMORY_SECTIONS_COUNT equ 128
 
 [bits 16]
 [org 0x20000]
@@ -22,7 +22,7 @@ stage2:
 	mov sp, 0
 
 detect_memory:
-	mov di, map_sections.entries
+	mov di, memory_sections.entries
 	mov ebx, 0
 	mov bp, 0	; BP -- entry count
 	mov edx, SMAP
@@ -65,7 +65,7 @@ detect_memory:
 	test ebx, ebx ; if EBX resets to 0, list is complete
 	jne .e820lp
 .e820f:
-	mov [map_sections.count], bp ; store the entry count
+	mov [memory_sections.count], bp ; store the entry count
 	clc	; clear carry flag
 	jmp .done
 .fail:
@@ -214,9 +214,9 @@ set_kernel_arguments:
 	; Calling convention:
 	; rdi, rsi, rdx, rcx, r8, r9
 
-	mov rdi, map_sections.entries
+	mov rdi, memory_sections.entries
 	mov rsi, 0
-	mov esi, dword [map_sections.count]
+	mov esi, dword [memory_sections.count]
 
 	; Program header table
 	mov rdx, [kernel + 0x20]
@@ -232,11 +232,11 @@ jump_to_kernel:
 	jmp $
 
 
-map_sections:
+memory_sections:
 .count:
 	times 4 db 0
 .entries:
-	times MAX_MAP_SECTIONS_COUNT * 24 db 0
+	times MAX_MEMORY_SECTIONS_COUNT * 24 db 0
 
 align 32
 gdt_32:
@@ -295,7 +295,7 @@ page_table:
 section .bss
 stack:
 .top:
-	resb 16 * 1024
+	resb 16 * 1024 * 1024
 .bottom:
 
 section .text

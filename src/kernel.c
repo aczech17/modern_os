@@ -12,6 +12,7 @@
 */
 
 #include "vga.h"
+#include "memory/memory_map.h"
 #include <stdbool.h>
 
 
@@ -37,49 +38,30 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
     clear_screen(0x07);
     print("%ZSuper system kurwo!\n\n%z", 0x4E);
     
-    u64 total_memory_available = 0;
-    print("Physical memory sections:\n");
-    for (u32 i = 0; i < mmap_count; ++i)
+    Memory_map memory_sections;
+    set_memory_map(&memory_sections, mmap_addr, mmap_count, 1 << 20);
+
+    print("Available memory sections:\n");
+    for (u32 i = 0; i < memory_sections.section_count; ++i)
     {
-        u64 base = *(u64*)(mmap_addr + i * 24);
-        u64 size = *(u64*)(mmap_addr + i * 24 + 8);
-        u32 type = *(u32*)(mmap_addr + i * 24 + 16);
-        u32 attr = *(u32*)(mmap_addr + i * 24 + 20);
-
-        bool ignored = (attr & 1) == 0;
-        if (ignored || type != 1)
-            continue;
-
-        u64 end = base + size - 1;
-        print("base = %X, end = %X\n", base, end);
-
-        if (base > 0)
-            total_memory_available += size;
+        print("start = %X, end = %X\n", memory_sections.start_addr[i], memory_sections.end_addr[i]);
     }
-    print("%ZTotal memory available: %X B ~= ", 0x0A, total_memory_available);
-    print_memory_size(total_memory_available);
-    print("%z\n");
 
-    // print("%u\n", total_memory_available);
-
-    u64 frame_memory_available = total_memory_available;
+    Memory_map kernel_sections;
+    kernel_sections.section_count = 0;
+    
     print("\nKernel sections:\n");
     for (u16 i = 0; i < ph_count; ++i)
     {
-        u32 p_type = *(u32*)(ph_addr + i * 0x38);
-        if (p_type != 1)
-            continue;
-
         u64 v_addr = *(u64*)(ph_addr + i * 0x38 + 0x10);
         u64 p_memsz = *(u64*)(ph_addr + i * 0x38 + 0x28);
         u64 end = v_addr + p_memsz - 1;
         print("start = %X, end = %X\n", v_addr, end);
 
-        frame_memory_available -= p_memsz;
+        kernel_sections.start_addr[i] = v_addr;
+        kernel_sections.end_addr[i] = end;
+        ++kernel_sections.section_count;
     }
-    print("%ZMemory available for allocation: %X B ~= ", 0x0A, frame_memory_available);
-    print_memory_size(frame_memory_available);
-    print("%z\n");
     
     for (;;);
 }
