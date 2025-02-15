@@ -56,7 +56,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
         if (base > 0)
             total_memory_available += size;
     }
-    print("%ZTotal memory available: %XB ~= ", 0x0A, total_memory_available);
+    print("%ZTotal memory available: %X B ~= ", 0x0A, total_memory_available);
     print_memory_size(total_memory_available);
     print("%z\n");
 
@@ -77,7 +77,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 
         frame_memory_available -= p_memsz;
     }
-    print("%ZMemory available for allocation: %XB ~= ", 0x0A, frame_memory_available);
+    print("%ZMemory available for allocation: %X B ~= ", 0x0A, frame_memory_available);
     print_memory_size(frame_memory_available);
     print("%z\n");
     
