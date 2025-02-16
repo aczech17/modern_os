@@ -17,7 +17,7 @@ void memory_copy(char* dst, const char* src, size_t count)
         *dst++ = *src++;
 }
 
-void memory_set(char* dst, char value, size_t count)
+void memory_set(u8* dst, char value, size_t count)
 {
     for (size_t i = 0; i < count; ++i)
         dst[i] = value;
