@@ -3,7 +3,7 @@
 
 void set_memory_map(Memory_map* mmap, u64 mmap_addr, u32 mmap_count, u64 low_mem_size)
 {
-    mmap->section_count = 0;
+    mmap->region_count = 0;
 
     for (u32 i = 0; i < mmap_count; ++i)
     {
@@ -15,8 +15,8 @@ void set_memory_map(Memory_map* mmap, u64 mmap_addr, u32 mmap_count, u64 low_mem
         if (type != 1 || base < low_mem_size)
             continue;
         
-        mmap->start_addr[mmap->section_count] = base;
-        mmap->end_addr[mmap->section_count] = end;
-        ++mmap->section_count;
+        mmap->start_addr[mmap->region_count] = base;
+        mmap->end_addr[mmap->region_count] = end;
+        ++mmap->region_count;
     }
 }
