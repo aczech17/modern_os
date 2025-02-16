@@ -13,6 +13,7 @@
 
 #include "vga.h"
 #include "memory/memory_map.h"
+#include "memory/allocator.h"
 #include <stdbool.h>
 
 
@@ -62,6 +63,19 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
         kernel_sections.end_addr[i] = end;
         ++kernel_sections.section_count;
     }
+
+    Memory_allocator memory_allocator;
+    init_memory_allocator(&memory_allocator, &memory_sections, &kernel_sections);
+
+    u64 frame_blocks_used = 0;
+    for (u64 i = 0; i < FRAME_BITMAP_SIZE; ++i)
+    {
+        u8 block = memory_allocator.frame_bitmap[i];
+        if (block != 0)
+            print("i = %x: %x\n", i, block);
+    }
+
+    // print("%u\n", frame_blocks_used);
     
     for (;;);
 }
