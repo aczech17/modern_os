@@ -15,11 +15,12 @@
 
 typedef struct
 {
-    Memory_map* available_sections;
-    Memory_map* kernel_sections;
+    Memory_map* available_regions;
+    Memory_map* kernel_regions;
     u8 frame_bitmap[FRAME_BITMAP_SIZE];
 }Memory_allocator;
 
-void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_sections, Memory_map* kernel_sections);
+void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions);
+u32 allocate_frame(Memory_allocator* allocator);
 
 #endif // MEM_ALLOCATOR_H
