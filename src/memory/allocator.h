@@ -18,7 +18,7 @@ typedef struct
     Memory_map* available_regions;
     Memory_map* kernel_regions;
     u8 frame_bitmap[FRAME_BITMAP_SIZE];
-    // u32 latest_allocated_block;
+    u32 latest_allocated_block;
 }Memory_allocator;
 
 void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions);

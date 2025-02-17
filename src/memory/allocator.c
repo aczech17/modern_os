@@ -5,7 +5,7 @@ void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_re
 {
     allocator->available_regions = available_regions;
     allocator->kernel_regions = kernel_regions;
-    // allocator->latest_allocated_block = 0;
+    allocator->latest_allocated_block = 0;
 
     // Initially mark all frames as used.
     memory_set(allocator->frame_bitmap, 0xFF, FRAME_BITMAP_SIZE);
@@ -49,25 +49,33 @@ void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_re
 
 u32 allocate_frame(Memory_allocator* allocator)
 {
-    for (u32 block_index = 0; block_index < FRAME_BITMAP_SIZE; ++block_index)
+    u32 block_index = allocator->latest_allocated_block;
+
+    for (u32 attempt = 0; attempt < FRAME_BITMAP_SIZE; ++attempt)
     {
         u8* frame_block = &allocator->frame_bitmap[block_index];
-        if (*frame_block == 0xFF)
+        if (*frame_block == 0xFF) // If the block is full, switch to the next block and try again.
+        {
+            block_index = (block_index + 1) % FRAME_BITMAP_SIZE;
             continue;
+        }
         
-        // This is the correct frame block.
-        // allocator->latest_allocated_block = block_index;
+        // We found a non-full frame block.
+        allocator->latest_allocated_block = block_index;
 
+        // Search for a free frame in this block. Surely there is one.
         for (u32 i = 0; i < 8; ++i)
         {
             u8 mask = 0x80 >> i;
             if ((*frame_block & mask) == 0)
             {
-                *frame_block |= mask;
+                *frame_block |= mask;   // mark as used
                 u32 frame_number = 8 * block_index + i;
                 return frame_number;
             }
         }
+
+        block_index = (block_index + 1) % FRAME_BITMAP_SIZE;
     }
 
     return 0;
