@@ -80,3 +80,10 @@ u32 allocate_frame(Memory_allocator* allocator)
 
     return 0;
 }
+
+void deallocate_frame(Memory_allocator* allocator, u32 frame_number)
+{
+    u32 frame_block = frame_number / 8;
+    u32 frame_in_block = frame_number % 8;
+    allocator->frame_bitmap[frame_block] &= ~(1 << (7 - frame_in_block));
+}

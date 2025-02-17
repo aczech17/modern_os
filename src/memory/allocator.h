@@ -23,5 +23,6 @@ typedef struct
 
 void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions);
 u32 allocate_frame(Memory_allocator* allocator);
+void deallocate_frame(Memory_allocator* allocator, u32 frame_number);
 
 #endif // MEM_ALLOCATOR_H
