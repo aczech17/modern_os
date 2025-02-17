@@ -5,6 +5,7 @@ void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_re
 {
     allocator->available_regions = available_regions;
     allocator->kernel_regions = kernel_regions;
+    // allocator->latest_allocated_block = 0;
 
     // Initially mark all frames as used.
     memory_set(allocator->frame_bitmap, 0xFF, FRAME_BITMAP_SIZE);
@@ -14,6 +15,7 @@ void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_re
     {
         u64 region_start = available_regions->start_addr[region];
         u64 region_end   = available_regions->end_addr[region];
+
         u64 first_frame = region_start / FRAME_SIZE;
         u64 last_frame = region_end / FRAME_SIZE; // Round down
 
@@ -52,11 +54,14 @@ u32 allocate_frame(Memory_allocator* allocator)
         u8* frame_block = &allocator->frame_bitmap[block_index];
         if (*frame_block == 0xFF)
             continue;
+        
+        // This is the correct frame block.
+        // allocator->latest_allocated_block = block_index;
 
         for (u32 i = 0; i < 8; ++i)
         {
             u8 mask = 0x80 >> i;
-            if ((*frame_block & mask) != 0)
+            if ((*frame_block & mask) == 0)
             {
                 *frame_block |= mask;
                 u32 frame_number = 8 * block_index + i;

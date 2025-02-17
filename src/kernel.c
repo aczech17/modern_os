@@ -87,6 +87,13 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
     }
 
     print("%ZFree frames:%X\n%z", 0x0A, free_frames);
+
+    print("%Z", 0x17);
+    for (int i = 0;i < 2;i++)
+    {
+        u32 frame = allocate_frame(&memory_allocator);
+        print("frame %u, address %X\n", frame, frame * FRAME_SIZE);
+    }
     
     
     for (;;);
