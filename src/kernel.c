@@ -14,30 +14,11 @@
 #include "vga.h"
 #include "memory/memory_map.h"
 #include "memory/allocator.h"
-#include <stdbool.h>
-
-
-void print_memory_size(u64 memsize)
-{
-    const char* units[] = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
-    size_t len = 6;
-
-    for (size_t i = 0; i < len; ++i)
-    {
-        if ((memsize >> 10) == 0)
-        {
-            print("%u%s", memsize, units[i]);
-            break;
-        }
-
-        memsize = memsize >> 10;
-    }
-}
 
 void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 {
     clear_screen(0x07);
-    print("%ZSuper system kurwo!\n\n%z", 0x4E);
+    print("%ZSuper system!\n%z", 0x4E);
     
     Memory_map memory_regions;
     set_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
@@ -88,20 +69,37 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 
     print("%ZFree frames:%X\n%z", 0x0A, free_frames);
 
-    for (int i = 0; i < 2137; ++i)
+    print("\nAllocating all frames possible...\n");
+    const int max_frames = 1 << 23;
+    int allocated_frames = 0;
+    for (int i = 0; i < max_frames; ++i)
     {
-        // This should do nothing.
-        u32 frame = allocate_frame(&memory_allocator);
-        deallocate_frame(&memory_allocator, frame);
+        u32 frame;
+        u32 frame_attempt = allocate_frame(&memory_allocator);
+        if (frame_attempt != 0)
+        {
+            frame = frame_attempt;
+            allocated_frames++;
+        }
+
+        else
+        {
+            print("Last allocated frame: %X, address %X\n", frame, (u64)frame * FRAME_SIZE);
+            print("allocated %X frames\n", allocated_frames);
+            break;
+        }
+        // print("frame %u allocated\n", frame);
+        // deallocate_frame(&memory_allocator, frame);
     }
 
+    print("\nTry to allocate one more frame...\n");
     print("%Z", 0x17);
-    for (int i = 0;i < 20; i++)
-    {
-        u32 frame = allocate_frame(&memory_allocator);
-        print("frame %u, address %X\n", frame, frame * FRAME_SIZE);
-    }
+
+    u64 frame = (u64)allocate_frame(&memory_allocator);
+    print("frame %u, address %u\n", frame, frame * 4096LL);
     print("%z");
+
+    print("If you see zero frame, then allocation failed.");
     
     
     for (;;);
