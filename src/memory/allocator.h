@@ -2,6 +2,7 @@
 #define MEM_ALLOCATOR_H
 
 #include "memory_map.h"
+#include "common.h"
 
 /*
     max RAM size = 32 GiB
@@ -9,9 +10,6 @@
     max frame count = 32 GiB / 4 KiB = 8 Mi frames
     8 Mi frames -> 8 Mi bools -> 8 Mib = 1 MiB
 */
-
-#define FRAME_SIZE (1 << 12)        // 4 KiB
-#define FRAME_BITMAP_SIZE (1 << 20) // 1 MiB
 
 typedef struct
 {

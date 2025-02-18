@@ -14,6 +14,7 @@
 #include "vga.h"
 #include "memory/memory_map.h"
 #include "memory/allocator.h"
+#include "memory/page_table.h"
 
 void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 {
@@ -99,7 +100,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
     print("frame %u, address %u\n", frame, frame * 4096LL);
     print("%z");
 
-    print("If you see zero frame, then allocation failed.");
+    print("If you see zero frame, then allocation failed successfully ;).");
     
     
     for (;;);
