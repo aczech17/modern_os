@@ -5,7 +5,8 @@ import shutil
 
 needed_tools = ["nasm", "gcc", "qemu-system-x86_64"]
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
-kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/allocator.c']
+kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/allocator.c',
+                  'src/memory/page_table.c']
 linker_script = 'linker.ld'
 
 def check_tools():

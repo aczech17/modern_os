@@ -15,6 +15,7 @@
 #include "memory/memory_map.h"
 #include "memory/allocator.h"
 #include "memory/page_table.h"
+#include <stdalign.h>
 
 void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 {
@@ -25,7 +26,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
     set_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
 
     u64 total_memory_available = 0;
-    print("Available memory sections:\n");
+    print("Available memory regions:\n");
     for (u32 i = 0; i < memory_regions.region_count; ++i)
     {
         total_memory_available += (memory_regions.end_addr[i] - memory_regions.start_addr[i] + 1);
@@ -38,7 +39,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
     Memory_map kernel_regions;
     kernel_regions.region_count = 0;
     
-    print("\nKernel sections:\n");
+    print("\nKernel regions:\n");
     for (u16 i = 0; i < ph_count; ++i)
     {
         u64 v_addr = *(u64*)(ph_addr + i * 0x38 + 0x10);
@@ -70,38 +71,56 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
 
     print("%ZFree frames:%X\n%z", 0x0A, free_frames);
 
-    print("\nAllocating all frames possible...\n");
-    const int max_frames = 1 << 23;
-    int allocated_frames = 0;
-    for (int i = 0; i < max_frames; ++i)
-    {
-        u32 frame;
-        u32 frame_attempt = allocate_frame(&memory_allocator);
-        if (frame_attempt != 0)
-        {
-            frame = frame_attempt;
-            allocated_frames++;
-        }
 
-        else
+
+    /*
+        u8 present;
+        u8 writable;
+        u8 user_accessible;
+        u8 write_through_caching;
+        u8 cache_disable;
+        u8 accessed;
+        u8 dirty;
+        u8 huge_page;
+        u8 global;
+        u64 available;
+        u64 phys_addr;
+        u64 no_execute;
+    */
+
+
+    alignas (4096) Page_table page_tables[4];
+
+    for (int level = 4; level >= 1; --level)
+    {
+        Page_table* pt = &page_tables[level - 1];
+        for (int entry_num = 0; entry_num < 512; ++entry_num)
         {
-            print("Last allocated frame: %X, address %X\n", frame, (u64)frame * FRAME_SIZE);
-            print("allocated %X frames\n", allocated_frames);
-            break;
+            Page_table_entry pt_entry =
+            {
+                .present = 0,
+                .writable = 1,
+                .user_accessible = 1,
+                .write_through_caching = 1,
+                .cache_disable = 0,
+                .accessed = 0,
+                .dirty = 0,
+                .huge_page = 0,
+                .global = 1,
+                .available = 0,
+                .phys_addr = 0,
+                .no_execute = 0,
+            };
+
+            pt->entry[entry_num] = value(&pt_entry);
         }
-        // print("frame %u allocated\n", frame);
-        // deallocate_frame(&memory_allocator, frame);
     }
 
-    print("\nTry to allocate one more frame...\n");
-    print("%Z", 0x17);
-
-    u64 frame = (u64)allocate_frame(&memory_allocator);
-    print("frame %u, address %u\n", frame, frame * 4096LL);
-    print("%z");
-
-    print("If you see zero frame, then allocation failed successfully ;).");
-    
+    for (int level = 4; level >= 1; --level)
+    {
+        Page_table* pt = &page_tables[level - 1];
+        print("page table level %u at %X, size = %u\n", level, pt, sizeof(*pt));
+    }
     
     for (;;);
 }
