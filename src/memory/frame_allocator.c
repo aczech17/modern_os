@@ -1,7 +1,7 @@
-#include "allocator.h"
+#include "frame_allocator.h"
 #include "../common.h"
 
-void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions)
+void init_frame_allocator(Frame_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions)
 {
     allocator->available_regions = available_regions;
     allocator->kernel_regions = kernel_regions;
@@ -47,7 +47,7 @@ void init_memory_allocator(Memory_allocator* allocator, Memory_map* available_re
     }
 }
 
-u32 allocate_frame(Memory_allocator* allocator)
+u32 allocate_frame(Frame_allocator* allocator)
 {
     u32 block_index = allocator->latest_allocated_block;
 
@@ -81,7 +81,7 @@ u32 allocate_frame(Memory_allocator* allocator)
     return 0;
 }
 
-void deallocate_frame(Memory_allocator* allocator, u32 frame_number)
+void deallocate_frame(Frame_allocator* allocator, u32 frame_number)
 {
     u32 frame_block = frame_number / 8;
     u32 frame_in_block = frame_number % 8;
