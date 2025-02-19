@@ -18,11 +18,12 @@ SECTIONS
         KEEP(*(.stage2))
     }
 
+    . = 0x100000;
     .bss : {
         *(.bss)
     } :data
 
-    . = 0x1100000;
+    . = TEXT_ADDR;
     .text : ALIGN(4K) {
         *(.text)
     } :text

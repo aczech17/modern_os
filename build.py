@@ -9,11 +9,33 @@ kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memor
                   'src/memory/page_table.c']
 linker_script = 'linker.ld'
 
+stack_size = 1 << 24
+text_addr = (1 << 20) + stack_size
+
 def check_tools():
     for tool in needed_tools:
         if not shutil.which(tool):
             print(f"\033[33m{tool} not found. Make sure it's installed.\033[0m") # yellow
             sys.exit(1)
+
+def write_stack_size():
+    print("Writing stack size...")
+    with open('out/stack_size.inc', 'w') as f:
+        f.write(f"STACK_SIZE equ {stack_size}\n")
+    print(f"STACK_SIZE written to out/stack_size.inc as {stack_size}")
+
+def prepare_linker_script():
+    print("Preparing linker script...")
+    with open(linker_script, 'r') as f:
+        linker_content = f.read()
+
+    linker_content = linker_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
+
+    with open('out/linker_ready.ld', 'w') as f:
+        f.write(linker_content)
+
+    print(f"Updated linker script saved to out/linker_ready.ld with TEXT_ADDR = 0x{text_addr:X}")
+
 
 def assemble_asm(source, output):
     print(f"Assembling {source}.")
@@ -35,6 +57,7 @@ def compile_kernel(source_files, output, linker_script):
     except subprocess.CalledProcessError:
         print("\033[31mError compiling kernel.\033[0m") # Red color
         sys.exit(1)
+
 
 def calculate_sectors(file_paths):
     all_file_sizes = sum(os.path.getsize(f) for f in file_paths if os.path.isfile(f))
@@ -63,6 +86,7 @@ def run_qemu(memory_size):
 def clean_all():
     subprocess.run(['rm', '-rf', 'out'])
 
+
 def main():
     if sys.platform.startswith("win"):
         print("ERROR: This code is meant to be compiled on Linux.")
@@ -75,8 +99,11 @@ def main():
     check_tools()
     os.makedirs('out', exist_ok=True)
 
+    write_stack_size()
+    prepare_linker_script()
+
     assemble_asm(bootloader_sources[1], 'out/stage2.bin')
-    compile_kernel(kernel_sources, 'out/kernel.elf', linker_script)
+    compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker_ready.ld')
 
     calculate_sectors(['out/stage2.bin', 'out/kernel.elf'])
 

@@ -1,5 +1,6 @@
 SMAP equ 0x0534D4150
 MAX_MEMORY_SECTIONS_COUNT equ 128
+%include "out/stack_size.inc"
 
 [bits 16]
 [org 0x20000]
@@ -225,8 +226,7 @@ set_kernel_arguments:
 	; Program header entry count
 	movzx rcx, word [kernel + 0x38]	; e_phnum -- numer of ph entries.
 
-	mov r8, stack.top
-	mov r9, stack.bottom
+	mov r8, STACK_SIZE
 	
 jump_to_kernel:
 	mov rax, [kernel + 0x18]		; e_entry -- entry point
@@ -298,7 +298,7 @@ page_table:
 section .bss
 stack:
 .top:
-	resb 16 * 1024 * 1024
+	resb STACK_SIZE
 .bottom:
 
 section .text

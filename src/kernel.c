@@ -70,7 +70,7 @@ static void print_free_frames(const Frame_allocator* frame_allocator)
     print("%ZFree frames:%X\n%z", 0x0A, free_frames);
 }
 
-void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_top, u64 stack_bottom)
+void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_size)
 {
     clear_screen(0x07);
     print("%ZSuper system!\n%z", 0x4E);
@@ -78,6 +78,8 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     Memory_map memory_regions;
     init_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
     
+    const u64 stack_top = 1 << 20;
+    u64 stack_bottom = stack_top + stack_size - 1;
     Memory_map kernel_regions;
     init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_top, stack_bottom);
 
