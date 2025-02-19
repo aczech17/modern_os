@@ -1,7 +1,7 @@
 #include "memory_map.h"
 #include <stdbool.h>
 
-void set_memory_map(Memory_map* mmap, u64 mmap_addr, u32 mmap_count, u64 low_mem_size)
+void init_memory_map(Memory_map* mmap, u64 mmap_addr, u32 mmap_count, u64 low_mem_size)
 {
     mmap->region_count = 0;
 
