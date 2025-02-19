@@ -37,14 +37,14 @@ void init_kernel_regions(Memory_map* kernel_regions, u64 ph_addr, u16 ph_count, 
     ++kernel_regions->region_count;
 }
 
-static void print_memory_map(const Memory_map* memory_sections, const char* name)
+static void print_memory_map(const Memory_map* memory_regions, const char* name)
 {
     print("%s:\n", name);
     u64 total_memory_available = 0;
-    for (u32 i = 0; i < memory_sections->region_count; ++i)
+    for (u32 i = 0; i < memory_regions->region_count; ++i)
     {
-        total_memory_available += (memory_sections->end_addr[i] - memory_sections->start_addr[i] + 1);
-        print("start = %X, end = %X\n", memory_sections->start_addr[i], memory_sections->end_addr[i]);
+        total_memory_available += (memory_regions->end_addr[i] - memory_regions->start_addr[i] + 1);
+        print("start = %X, end = %X\n", memory_regions->start_addr[i], memory_regions->end_addr[i]);
     }
     u64 total_frames_available = total_memory_available / FRAME_SIZE;
     print("%ZTotal memory in %s: %X\n", 0x0A, name, total_memory_available);
@@ -75,19 +75,19 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     clear_screen(0x07);
     print("%ZSuper system!\n%z", 0x4E);
     
-    Memory_map memory_sections;
-    init_memory_map(&memory_sections, mmap_addr, mmap_count, 1 << 20);
+    Memory_map memory_regions;
+    init_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
     
     Memory_map kernel_regions;
     init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_top, stack_bottom);
 
-    print_memory_map(&memory_sections, "available");
+    print_memory_map(&memory_regions, "available");
     print_memory_map(&kernel_regions, "kernel");
 
     Frame_allocator frame_allocator;
-    init_frame_allocator(&frame_allocator, &memory_sections, &kernel_regions);
+    init_frame_allocator(&frame_allocator, &memory_regions, &kernel_regions);
 
-    
+    print_free_frames(&frame_allocator);
 
 
     /*

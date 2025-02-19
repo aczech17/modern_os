@@ -18,7 +18,11 @@ SECTIONS
         KEEP(*(.stage2))
     }
 
-    . = 0x00100000;
+    .bss : {
+        *(.bss)
+    } :data
+
+    . = 0x1100000;
     .text : ALIGN(4K) {
         *(.text)
     } :text
@@ -31,7 +35,5 @@ SECTIONS
         *(.data)
     } :data
 
-    .bss : ALIGN(4K) {
-        *(.bss)
-    } :data
+    
 }
