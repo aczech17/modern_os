@@ -13,52 +13,50 @@
 
 #include "vga.h"
 #include "memory/memory_map.h"
-#include "memory/allocator.h"
+#include "memory/frame_allocator.h"
 #include "memory/page_table.h"
 #include <stdalign.h>
 
-void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
+
+void init_kernel_regions(Memory_map* kernel_regions, u64 ph_addr, u16 ph_count, u64 stack_top, u64 stack_bottom)
 {
-    clear_screen(0x07);
-    print("%ZSuper system!\n%z", 0x4E);
-    
-    Memory_map memory_regions;
-    set_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
-
-    u64 total_memory_available = 0;
-    print("Available memory regions:\n");
-    for (u32 i = 0; i < memory_regions.region_count; ++i)
-    {
-        total_memory_available += (memory_regions.end_addr[i] - memory_regions.start_addr[i] + 1);
-        print("start = %X, end = %X\n", memory_regions.start_addr[i], memory_regions.end_addr[i]);
-    }
-    u64 total_frames_available = total_memory_available / FRAME_SIZE;
-    print("%ZTotal memory available: %X\n", 0x0A, total_memory_available);
-    print("Total frames available: %X\n%z", total_frames_available);
-
-    Memory_map kernel_regions;
-    kernel_regions.region_count = 0;
-    
-    print("\nKernel regions:\n");
+    kernel_regions->region_count = 0;
     for (u16 i = 0; i < ph_count; ++i)
     {
         u64 v_addr = *(u64*)(ph_addr + i * 0x38 + 0x10);
         u64 p_memsz = *(u64*)(ph_addr + i * 0x38 + 0x28);
         u64 end = v_addr + p_memsz - 1;
-        print("start = %X, end = %X\n", v_addr, end);
 
-        kernel_regions.start_addr[i] = v_addr;
-        kernel_regions.end_addr[i] = end;
-        ++kernel_regions.region_count;
+        kernel_regions->start_addr[i] = v_addr;
+        kernel_regions->end_addr[i] = end;
+        ++kernel_regions->region_count;
     }
 
-    Memory_allocator memory_allocator;
-    init_memory_allocator(&memory_allocator, &memory_regions, &kernel_regions);
+    kernel_regions->start_addr[kernel_regions->region_count] = stack_top;
+    kernel_regions->end_addr[kernel_regions->region_count] = stack_bottom;
+    ++kernel_regions->region_count;
+}
 
+static void print_memory_map(const Memory_map* memory_sections, const char* name)
+{
+    print("%s:\n", name);
+    u64 total_memory_available = 0;
+    for (u32 i = 0; i < memory_sections->region_count; ++i)
+    {
+        total_memory_available += (memory_sections->end_addr[i] - memory_sections->start_addr[i] + 1);
+        print("start = %X, end = %X\n", memory_sections->start_addr[i], memory_sections->end_addr[i]);
+    }
+    u64 total_frames_available = total_memory_available / FRAME_SIZE;
+    print("%ZTotal memory in %s: %X\n", 0x0A, name, total_memory_available);
+    print("Total frames in %s: %X\n%z\n", name, total_frames_available);
+}
+
+static void print_free_frames(const Frame_allocator* frame_allocator)
+{
     u64 free_frames = 0;
     for (u64 block_index = 0; block_index < FRAME_BITMAP_SIZE; ++block_index)
     {
-        u8 block = memory_allocator.frame_bitmap[block_index];
+        u8 block = frame_allocator->frame_bitmap[block_index];
 
         for (u64 i = 0; i < 8; ++i)
         {
@@ -70,7 +68,26 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
     }
 
     print("%ZFree frames:%X\n%z", 0x0A, free_frames);
+}
 
+void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_top, u64 stack_bottom)
+{
+    clear_screen(0x07);
+    print("%ZSuper system!\n%z", 0x4E);
+    
+    Memory_map memory_sections;
+    init_memory_map(&memory_sections, mmap_addr, mmap_count, 1 << 20);
+    
+    Memory_map kernel_regions;
+    init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_top, stack_bottom);
+
+    print_memory_map(&memory_sections, "available");
+    print_memory_map(&kernel_regions, "kernel");
+
+    Frame_allocator frame_allocator;
+    init_frame_allocator(&frame_allocator, &memory_sections, &kernel_regions);
+
+    
 
 
     /*
@@ -116,11 +133,16 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count)
         }
     }
 
+    
+    print("\nstack from %X to %X\n\n", stack_top, stack_bottom);
+
     for (int level = 4; level >= 1; --level)
     {
         Page_table* pt = &page_tables[level - 1];
         print("page table level %u at %X, size = %u\n", level, pt, sizeof(*pt));
     }
+
+    
     
     for (;;);
 }
