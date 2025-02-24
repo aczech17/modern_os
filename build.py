@@ -13,10 +13,15 @@ stack_size = 1 << 24
 text_addr = (1 << 20) + stack_size
 
 def check_tools():
+    all_installed = True
+
     for tool in needed_tools:
         if not shutil.which(tool):
             print(f"\033[33m{tool} not found. Make sure it's installed.\033[0m") # yellow
-            sys.exit(1)
+            all_installed = False
+
+    return all_installed
+
 
 def write_stack_size():
     print("Writing stack size...")
@@ -96,7 +101,9 @@ def main():
         clean_all()
         return
 
-    check_tools()
+    if check_tools() == False:
+        return
+    
     os.makedirs('out', exist_ok=True)
 
     write_stack_size()
