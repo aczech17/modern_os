@@ -86,7 +86,15 @@ def run_qemu(memory_size):
         return
 
     print(f"Running with {memory_size}B of RAM...")
-    subprocess.run(['qemu-system-x86_64', '-drive', 'format=raw,file=out/os.img', '-m', memory_size])
+
+    try:
+        qemu_process = subprocess.Popen(['qemu-system-x86_64', '-drive', 'format=raw,file=out/os.img', '-m', memory_size])
+        qemu_process.wait()
+    except KeyboardInterrupt:
+        qemu_process.terminate()
+        print("\033[33m\nSimulation terminated.\033[0m") # yellow
+        sys.exit(0)
+
 
 def clean_all():
     subprocess.run(['rm', '-rf', 'out'])
