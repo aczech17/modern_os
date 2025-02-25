@@ -17,26 +17,6 @@
 #include "memory/page_table.h"
 #include <stdalign.h>
 
-
-void init_kernel_regions(Memory_map* kernel_regions, u64 ph_addr, u16 ph_count, u64 stack_top, u64 stack_bottom)
-{
-    kernel_regions->region_count = 0;
-    for (u16 i = 0; i < ph_count; ++i)
-    {
-        u64 v_addr = *(u64*)(ph_addr + i * 0x38 + 0x10);
-        u64 p_memsz = *(u64*)(ph_addr + i * 0x38 + 0x28);
-        u64 end = v_addr + p_memsz - 1;
-
-        kernel_regions->start_addr[i] = v_addr;
-        kernel_regions->end_addr[i] = end;
-        ++kernel_regions->region_count;
-    }
-
-    kernel_regions->start_addr[kernel_regions->region_count] = stack_top;
-    kernel_regions->end_addr[kernel_regions->region_count] = stack_bottom;
-    ++kernel_regions->region_count;
-}
-
 static void print_memory_map(const Memory_map* memory_regions, const char* name)
 {
     print("%s:\n", name);
@@ -73,13 +53,14 @@ static void print_free_frames(const Frame_allocator* frame_allocator)
 void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_size)
 {
     clear_screen(0x07);
-    print("%ZSuper system!\n%z", 0x4E);
+    print("%ZSuper system!\n%z\n", 0x4E);
     
     Memory_map memory_regions;
     init_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
     
     const u64 stack_top = 1 << 20;
     u64 stack_bottom = stack_top + stack_size - 1;
+
     Memory_map kernel_regions;
     init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_top, stack_bottom);
 
@@ -108,43 +89,9 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     */
 
 
-    alignas (4096) Page_table page_tables[4];
+    alignas (4096) Page_table_tree page_table_tree;
 
-    for (int level = 4; level >= 1; --level)
-    {
-        Page_table* pt = &page_tables[level - 1];
-        for (int entry_num = 0; entry_num < 512; ++entry_num)
-        {
-            Page_table_entry pt_entry =
-            {
-                .present = 0,
-                .writable = 1,
-                .user_accessible = 1,
-                .write_through_caching = 1,
-                .cache_disable = 0,
-                .accessed = 0,
-                .dirty = 0,
-                .huge_page = 0,
-                .global = 1,
-                .available = 0,
-                .phys_addr = 0,
-                .no_execute = 0,
-            };
-
-            pt->entry[entry_num] = value(&pt_entry);
-        }
-    }
-
-    
-    print("\nstack from %X to %X\n\n", stack_top, stack_bottom);
-
-    for (int level = 4; level >= 1; --level)
-    {
-        Page_table* pt = &page_tables[level - 1];
-        print("page table level %u at %X, size = %u\n", level, pt, sizeof(*pt));
-    }
-
-    
+    print("page table tree at %X, size = %X", &page_table_tree, sizeof(page_table_tree));
     
     for (;;);
 }

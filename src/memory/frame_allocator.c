@@ -1,4 +1,5 @@
 #include "frame_allocator.h"
+#include "common.h"
 #include "../common.h"
 
 void init_frame_allocator(Frame_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions)
@@ -78,7 +79,7 @@ u32 allocate_frame(Frame_allocator* allocator)
         block_index = (block_index + 1) % FRAME_BITMAP_SIZE;
     }
 
-    return 0;
+    return INVALID_ADDR;
 }
 
 void deallocate_frame(Frame_allocator* allocator, u32 frame_number)
