@@ -13,14 +13,20 @@ stack_size = 1 << 24
 text_addr = (1 << 20) + stack_size
 
 def check_tools():
-    all_installed = True
+    missing_tools = []
 
     for tool in needed_tools:
         if not shutil.which(tool):
-            print(f"\033[33m{tool} not found. Make sure it's installed.\033[0m") # yellow
-            all_installed = False
+            missing_tools.append(tool);
 
-    return all_installed
+    if missing_tools:
+        print("\033[33mFollowing tools are not installed. Install them first.")
+        for tool in missing_tools:
+            print(f"{tool} ", end='')
+        print("\033[0m\n")
+        return False
+
+    return True
 
 
 def write_stack_size():
