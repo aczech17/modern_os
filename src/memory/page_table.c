@@ -53,15 +53,50 @@ static u64 value(const Page_table_entry* entry)
     return bswap_64(val);
 }
 
-static void identity_map_region(Page_table_tree* pt_tree, u64 region_start, u64 region_end)
+static void identity_map_page(Page_table_tree* pt_tree, u64 page_addr)
 {
+    u64 table_addr;
+    for (u32 level = 0; level <= 3; ++level)
+    {
+        u32 shift = 39 - 9 * level;
+        u32 index = (page_addr >> shift) & 0b111111111; // 9-bit index
+        u64* table_entry_value = &pt_tree->tables[level].entry[index];
+
+        /*
+            u8 present;
+            u8 writable;
+            u8 user_accessible;
+            u8 write_through_caching;
+            u8 cache_disable;
+            u8 accessed;
+            u8 dirty;
+            u8 huge_page;
+            u8 global;
+            u64 available;
+            u64 phys_addr;
+            u64 no_execute;
+        */
+        
+        Page_table_entry entry =
+        {
+            .present = 1,
+        };
+        
+    }
 }
 
 void identity_map_kernel(Page_table_tree* pt_tree, const Memory_map* kernel_regions)
 {
+
     for (u64 region = 0; region < kernel_regions->region_count; ++region)
     {
-        identity_map_region(pt_tree, kernel_regions->start_addr[region], kernel_regions->end_addr[region]);
+        u64 region_start = kernel_regions->start_addr[region];
+        u64 region_end = kernel_regions->end_addr[region];
+
+        for (u64 page_addr = region_start; page_addr < region_end; page_addr += FRAME_SIZE)
+        {
+            identity_map_page(pt_tree, page_addr);
+        }
     }
 }
 
@@ -78,13 +113,14 @@ u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr)
     {
         u32 shift = 39 - 9 * level;
         u32 index = (virt_addr >> shift) & 0b111111111; // 9-bit index
-        table_addr = tree->tables[level].entry[index];
+        u64 table_entry_value = tree->tables[level].entry[index];
+        table_addr = table_entry_value & 0x000FFFFFFFFFF000;
 
         // Check if present.
-        if (!(table_addr & 1))
+        if (!(table_entry_value & 1))
             return INVALID_ADDR;
     }
-    u64 page_addr = table_addr & 0x000FFFFFFFFFF000;
+    u64 page_addr = table_addr;
     u64 page_offset = virt_addr & 0xFFF;
 
     return page_addr | page_offset;
