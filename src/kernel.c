@@ -56,7 +56,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     print("%ZSuper system!\n%z\n", 0x4E);
     
     Memory_map memory_regions;
-    init_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20);
+    init_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20); // Determnine which physical addresses are available.
     
     const u64 stack_top = 1 << 20;
     u64 stack_bottom = stack_top + stack_size - 1;
@@ -90,8 +90,17 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
 
 
     alignas (4096) Page_table_tree page_table_tree;
+    zero_page_table_tree(&page_table_tree);
 
     print("page table tree at %X, size = %X", &page_table_tree, sizeof(page_table_tree));
+    identity_map_kernel(&page_table_tree, &kernel_regions);
+
+    __asm__ volatile (
+        "mov %0, %%cr3\n"
+        "mov %0, %%cr3" // Clear TLB.
+        :: "r"(&page_table_tree)
+        : "memory"
+    );
     
     for (;;);
 }

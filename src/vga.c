@@ -1,10 +1,5 @@
 #include "vga.h"
 
-#define VGA_ADDRESS ((char*)(0xB8000))
-#define VGA_WIDTH 80
-#define VGA_HEIGHT 25
-#define VGA_SIZE (VGA_WIDTH * VGA_HEIGHT * 2)
-
 static void write_char_vga(char c, size_t row, size_t col, char color)
 {
     if (row >= VGA_HEIGHT || col >= VGA_WIDTH)

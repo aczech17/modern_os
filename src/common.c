@@ -101,3 +101,9 @@ void print(const char* format, ...)
 
     va_end(args);
 }
+
+void panic(const char* msg)
+{
+    print("\n PANIC: %s\n", msg);
+    for (;;);
+}

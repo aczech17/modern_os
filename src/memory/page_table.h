@@ -30,6 +30,7 @@ typedef struct
     Page_table tables[4];
 }Page_table_tree;
 
+void zero_page_table_tree(Page_table_tree* tree);
 void identity_map_kernel(Page_table_tree* tree, const Memory_map* kernel_regions);
 u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr);
 

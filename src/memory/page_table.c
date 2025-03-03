@@ -1,6 +1,8 @@
 #include "page_table.h"
 #include "common.h"
 #include <byteswap.h>
+#include "../vga.h"
+#include "../common.h"
 
 /*
     u8 present;
@@ -53,15 +55,26 @@ static u64 value(const Page_table_entry* entry)
     return bswap_64(val);
 }
 
+// static Page_table_entry entry_from_value(u64 value)
+// {
+//     value = bswap_64(value);
+
+// }
+
+static u64 frame_start_of_addr(u64 addr)
+{
+    return addr & ~(FRAME_SIZE - 1);
+}
+
 static void identity_map_page(Page_table_tree* pt_tree, u64 page_addr)
 {
-    u64 table_addr;
     for (u32 level = 0; level <= 3; ++level)
     {
         u32 shift = 39 - 9 * level;
         u32 index = (page_addr >> shift) & 0b111111111; // 9-bit index
-        u64* table_entry_value = &pt_tree->tables[level].entry[index];
 
+        u64* table_entry_value_addr = &pt_tree->tables[level].entry[index];
+        
         /*
             u8 present;
             u8 writable;
@@ -76,27 +89,72 @@ static void identity_map_page(Page_table_tree* pt_tree, u64 page_addr)
             u64 phys_addr;
             u64 no_execute;
         */
+
+        u64 phys_addr;
+        if (level < 3)
+        {
+            Page_table* next_level_table_addr = &pt_tree->tables[level + 1];
+            phys_addr = (u64)next_level_table_addr;
+
+            // Check if table address is page aligned.
+            if (phys_addr & 0xFFF)
+                panic("Table is not page aligned");
+        }
+        else
+        {
+            phys_addr = frame_start_of_addr(page_addr);
+        }
         
         Page_table_entry entry =
         {
             .present = 1,
+            .writable = 1,              // ???
+            .user_accessible = 0,
+            .write_through_caching = 0, // ???
+            .cache_disable = 0,
+            .accessed = 1,
+            .dirty = 1, // ???
+            .huge_page = 0,
+            .global = 1,
+            .available = 0,
+            .phys_addr = phys_addr,
+            .no_execute = 0,            // ???
         };
         
+        *table_entry_value_addr = value(&entry);
+    }
+}
+
+void zero_page_table_tree(Page_table_tree* tree)
+{
+    for (u32 level = 0; level < 4; ++level)
+    {
+        for (u32 entry_num = 0; entry_num < 512; ++entry_num)
+        {
+            tree->tables[level].entry[entry_num] = 0;
+        }
     }
 }
 
 void identity_map_kernel(Page_table_tree* pt_tree, const Memory_map* kernel_regions)
 {
-
     for (u64 region = 0; region < kernel_regions->region_count; ++region)
     {
         u64 region_start = kernel_regions->start_addr[region];
         u64 region_end = kernel_regions->end_addr[region];
 
-        for (u64 page_addr = region_start; page_addr < region_end; page_addr += FRAME_SIZE)
+        for (u64 page_addr = frame_start_of_addr(region_start); page_addr < region_end; page_addr += FRAME_SIZE)
         {
             identity_map_page(pt_tree, page_addr);
         }
+    }
+
+    // Identity map VGA buffer pages as well.
+    const u64 vga_start = 0xB8000;
+    const u64 vga_end = vga_start + VGA_SIZE - 1;
+    for (u64 page_addr = frame_start_of_addr(0xB8000); page_addr < vga_end; page_addr += FRAME_SIZE)
+    {
+        identity_map_page(pt_tree, page_addr);
     }
 }
 
@@ -114,11 +172,12 @@ u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr)
         u32 shift = 39 - 9 * level;
         u32 index = (virt_addr >> shift) & 0b111111111; // 9-bit index
         u64 table_entry_value = tree->tables[level].entry[index];
-        table_addr = table_entry_value & 0x000FFFFFFFFFF000;
 
         // Check if present.
         if (!(table_entry_value & 1))
             return INVALID_ADDR;
+
+        table_addr = table_entry_value & 0x000FFFFFFFFFF000;        
     }
     u64 page_addr = table_addr;
     u64 page_offset = virt_addr & 0xFFF;
