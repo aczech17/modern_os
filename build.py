@@ -7,7 +7,7 @@ needed_tools = ["nasm", "gcc", "qemu-system-x86_64"]
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c']
-linker_script = 'linker.ld'
+linker_script_template = 'linker_template.ld'
 
 stack_size = 1 << 24
 text_addr = (1 << 20) + stack_size
@@ -37,15 +37,15 @@ def write_stack_size():
 
 def prepare_linker_script():
     print("Preparing linker script...")
-    with open(linker_script, 'r') as f:
+    with open(linker_script_template, 'r') as f:
         linker_content = f.read()
 
     linker_content = linker_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
 
-    with open('out/linker_ready.ld', 'w') as f:
+    with open('out/linker.ld', 'w') as f:
         f.write(linker_content)
 
-    print(f"Updated linker script saved to out/linker_ready.ld with TEXT_ADDR = 0x{text_addr:X}")
+    print(f"Updated linker script saved to out/linker.ld with TEXT_ADDR = 0x{text_addr:X}")
 
 
 def assemble_asm(source, output):
@@ -58,10 +58,11 @@ def assemble_asm(source, output):
 
 def compile_kernel(source_files, output, linker_script):
     print(f"Compiling {', '.join(source_files)} with linker script {linker_script} to {output}.")
+
     compile_command = """
         gcc -ffreestanding -nostartfiles -mno-red-zone -Wall -Wextra -s
-        {sources} -T {linker} -e kernel_main -o {output}
-    """.format(sources=" ".join(source_files), linker=linker_script, output=output).split()
+        {sources} -T {linker_script} -e kernel_main -o {output}
+    """.format(sources=" ".join(source_files), linker_script=linker_script, output=output).split()
 
     try:
         subprocess.run(compile_command, check=True)
@@ -82,7 +83,7 @@ def calculate_sectors(file_paths):
 def create_disk_image():
     print("Joining the OS files...")
     with open("out/os.img", "wb") as img_file:
-        for filename in ["out/stage1.bin", "out/stage2.bin", "out/kernel.elf"]:
+        for filename in ["out/bootloader_stage1.bin", "out/bootloader_stage2.bin", "out/kernel.elf"]:
             with open(filename, "rb") as f:
                 img_file.write(f.read())
 
@@ -123,12 +124,12 @@ def main():
     write_stack_size()
     prepare_linker_script()
 
-    assemble_asm(bootloader_sources[1], 'out/stage2.bin')
-    compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker_ready.ld')
+    assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
+    compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker.ld')
 
-    calculate_sectors(['out/stage2.bin', 'out/kernel.elf'])
+    calculate_sectors(['out/bootloader_stage2.bin', 'out/kernel.elf'])
 
-    assemble_asm(bootloader_sources[0], 'out/stage1.bin')
+    assemble_asm(bootloader_sources[0], 'out/bootloader_stage1.bin')
     
     create_disk_image()
 

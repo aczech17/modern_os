@@ -19,8 +19,6 @@ start:
 	jmp 0xFFFF:0x0000 ; Force reboot if it reaches here after all.
 
 
-
-
 error:
 	mov bx, error_message
 	mov ah, 0x0E
@@ -49,7 +47,7 @@ disk_address_packet:
 	dw 0		; offset
 	dw 0x2000	; segment
 
-	dq 1		; sector 1
+	dq 1		; load to sector 1
 
 times 446 - ($ - $$) db 0
 partition_table:
