@@ -5,20 +5,11 @@ jmp word 0x0000:start ; Make sure we have address 0x0000:0x7C00, NOT 0x07C0:0x00
 
 start:
 	; Read the 2nd stage of the bootloader from the 2nd sector of the disk.
-	
-	; read the sector to 0x2000:0x0000
-	mov ax, 0x2000
-	mov es, ax
-	mov bx, 0
-
-	; Drive number in DL already set by BIOS.
-	mov ah, 2				; 2 read sector BIOS routine
-	mov al, SECTORS_TO_READ
-	mov ch, 0				; cylinder 0
-	mov cl, 2				; sector 2 (they start from 1)
-	mov dh, 0				; head number 0, they start from 0 (sic!)
-	
+	mov ah, 0x42	; extended read
+					; DL already set (?)
+	mov si, disk_address_packet
 	int 0x13
+
 	jc error
 	
 
@@ -46,6 +37,19 @@ error:
 
 
 error_message: db "Error reading disk.", 0
+
+; Disk address packet is a structure for BIOS to read linear sectors.
+disk_address_packet:
+	db 0x10		; structure size
+	db 0		; reserved
+
+	dw SECTORS_TO_READ
+
+	; read to [0x2000:0]
+	dw 0		; offset
+	dw 0x2000	; segment
+
+	dq 1		; sector 1
 
 times 446 - ($ - $$) db 0
 partition_table:
