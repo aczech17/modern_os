@@ -52,7 +52,9 @@ static u64 value(const Page_table_entry* entry)
         (entry->no_execute << 63);
 
     // Flip bytes because little endian.
-    return bswap_64(val);
+    //return bswap_64(val);
+
+    return val;
 }
 
 // static Page_table_entry entry_from_value(u64 value)

@@ -92,8 +92,17 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     alignas (4096) Page_table_tree page_table_tree;
     zero_page_table_tree(&page_table_tree);
 
-    print("page table tree at %X, size = %X", &page_table_tree, sizeof(page_table_tree));
+    print("page table tree at %X, size = %X\n", &page_table_tree, sizeof(page_table_tree));
     identity_map_kernel(&page_table_tree, &kernel_regions);
+
+    
+
+    print("PML4[0] = %X\n", page_table_tree.tables[0].entry[0]);
+    print("PDPT[0] = %X\n", page_table_tree.tables[1].entry[0]);
+    print("PD[0]   = %X\n", page_table_tree.tables[2].entry[0]);
+    print("PT[256] = %X\n", page_table_tree.tables[3].entry[256]);
+    
+    // for (;;);
 
     __asm__ volatile (
         "mov %0, %%cr3\n"
@@ -102,5 +111,6 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
         : "memory"
     );
     
+
     for (;;);
 }
