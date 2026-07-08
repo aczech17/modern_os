@@ -2,9 +2,11 @@
 %include "out/kernel_sectors.inc"
 %include "out/stack_size.inc"
 
-KERNEL_LBA equ (STAGE2_SECTORS + 1)
 SMAP equ 0x0534D4150
+KERNEL_LBA equ (STAGE2_SECTORS + 1)
+KERNEL_DESTINATION equ 0x00100000
 MAX_MEMORY_SECTIONS_COUNT equ 128
+
 
 [bits 16]
 [org 0x20000]
@@ -29,6 +31,35 @@ enable_a20:
 	or al, 2
 	out 0x92, al
 
+
+enter_unreal_mode:
+	cli
+
+	lgdt [gdt_32.addr]
+
+	mov eax, cr0
+	or eax, 1
+	mov cr0, eax
+
+	jmp 0x08:.protected
+.protected:
+	[bits 32]
+
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+
+	mov eax, cr0
+	and eax, 0xfffffffe
+	mov cr0, eax
+
+	jmp 0:.real
+.real:
+	[bits 16]
+	mov ax,0x10
+    mov ds,ax
+    mov es,ax
+	sti
 
 detect_memory:
 	mov di, memory_sections.entries
@@ -81,32 +112,28 @@ detect_memory:
 	jmp $
 .done:
 
-
 load_kernel:
 .next:
 	cmp dword [kernel_sectors_left], 0
 	je .done
 
-	; max 127 sectors per one BIOS read
 	mov eax, [kernel_sectors_left]
+
 	cmp eax, 127
 	jbe .count_ok
 
-	mov ax, 127
-	jmp .set_count
+	mov eax, 127
+	jmp .count_set
 
 .count_ok:
-	mov ax, word [kernel_sectors_left]
+	mov eax, [kernel_sectors_left]
 
-.set_count:
+.count_set:
 	mov [dap.sector_count], ax
 
-	; destination buffer
-	mov ax, [kernel_load_offset]
-	mov [dap.offset], ax
-
-	mov ax, [kernel_load_segment]
-	mov [dap.segment], ax
+	; Set BIOS buffer
+	mov word [dap.offset], 0
+	mov word [dap.segment], 0x8000
 
 	; LBA
 	mov eax, [kernel_current_lba]
@@ -115,39 +142,40 @@ load_kernel:
 	mov eax, [kernel_current_lba + 4]
 	mov [dap.lba + 4], eax
 
-	; BIOS extended read
 	mov ah, 0x42
 	mov dl, [boot_drive]
 	mov si, dap
-	int 0x13
 
+	; go!
+	int 0x13
 	jc $
 
-	; sectors read
-
+	; How many was actually read
 	movzx eax, word [dap.sector_count]
-	add word [kernel_current_lba], ax
-	adc word [kernel_current_lba + 2], 0
-	adc word [kernel_current_lba + 4], 0
-	adc word [kernel_current_lba + 6], 0
+
+	; Update LBA
+	add dword [kernel_current_lba], eax
+	adc dword [kernel_current_lba + 4], 0
 
 	sub dword [kernel_sectors_left], eax
 
-	; move buffer forward
-	mov ax, [dap.sector_count]
-	shl ax, 9
 
-	add [kernel_load_offset], ax
+	; Copying from 0x80000 to kernel_destination
+	mov esi, 0x80000
+	mov edi, [kernel_destination]
 
-	; offset overflow
-	jnc .next
+	mov ecx, eax
+	shl ecx, 7		; Sectors * 512 / 4
+	rep movsd
 
-	add word [kernel_load_segment], 0x1000
-	mov word [kernel_load_offset], 0
+	; Shift destination address
+	movzx eax, word [dap.sector_count]
+	shl eax, 9
+	add dword [kernel_destination], eax
 
 	jmp .next
-.done:
 
+.done:
 
     cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
 	lgdt [gdt_32.addr]
@@ -313,10 +341,10 @@ jump_to_kernel:
 
 boot_drive:				db 0
 
-kernel_current_lba: 	dq KERNEL_LBA
+kernel_current_lba:		dq KERNEL_LBA
 kernel_sectors_left:	dd KERNEL_SECTORS
-kernel_load_segment: 	dw 0x2000
-kernel_load_offset: 	dw STAGE2_SECTORS * 512
+kernel_destination:		dd KERNEL_DESTINATION ; ???
+;kernel_buffer:          dd 0x00080000
 
 align 4
 dap:
@@ -330,7 +358,6 @@ dap:
 	dw 0
 .lba:
 	dq 0
-
 
 memory_sections:
 .count:
