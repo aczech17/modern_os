@@ -162,12 +162,12 @@ start_64:
     
 	; Now let's load the kernel.
 load_kernel:
-	mov rsi, [kernel + 0x20]	; Load e_phof -- start of the program header table.
+	mov rsi, [abs kernel + 0x20]	; Load e_phof -- start of the program header table.
 								; Now in RSI we have the offset from the start of the kernel file,
 								; but we want the offset in the memory, so
 	add rsi, kernel				; we add to RSI the size of the stage 2.
 
-	movzx ecx, word [kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
+	movzx ecx, word [abs kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
 
 	cld			; Clear direction flag for future rep movsb.
 .ph_loop:
@@ -217,19 +217,19 @@ set_kernel_arguments:
 
 	mov rdi, memory_sections.entries
 	mov rsi, 0
-	mov esi, dword [memory_sections.count]
+	mov esi, dword [abs memory_sections.count]
 
 	; Program header table
-	mov rdx, [kernel + 0x20]
+	mov rdx, [abs kernel + 0x20]
 	add rdx, kernel
 
 	; Program header entry count
-	movzx rcx, word [kernel + 0x38]	; e_phnum -- numer of ph entries.
+	movzx rcx, word [abs kernel + 0x38]	; e_phnum -- numer of ph entries.
 
 	mov r8, STACK_SIZE
 	
 jump_to_kernel:
-	mov rax, [kernel + 0x18]		; e_entry -- entry point
+	mov rax, [abs kernel + 0x18]		; e_entry -- entry point
 	call rax						; Finally jump to the kernel.
 
 	jmp $
