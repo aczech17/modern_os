@@ -2,8 +2,9 @@ import os
 import subprocess
 import sys
 import shutil
+import time
 
-needed_tools = ["nasm", "gcc", "qemu-system-x86_64"]
+needed_tools = ["nasm", "gcc", "qemu-system-x86_64", "expect"]
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c']
@@ -11,6 +12,7 @@ linker_script = 'linker_template.ld'
 
 stack_size = 1 << 24
 text_addr = (1 << 20) + stack_size
+stage2_sectors = 32
 
 def check_tools():
     missing_tools = []
@@ -42,10 +44,8 @@ def prepare_linker_script():
 
     linker_content = linker_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
 
-    with open('out/linker_ready.ld', 'w') as f:
+    with open('out/linker.ld', 'w') as f:
         f.write(linker_content)
-
-    print(f"Updated linker script saved to out/linker_ready.ld with TEXT_ADDR = 0x{text_addr:X}")
 
 
 def assemble_asm(source, output):
@@ -94,14 +94,16 @@ def compile_kernel(source_files, output, linker_script):
         sys.exit(1)
 
 
-def calculate_sectors(file_paths):
-    all_file_sizes = sum(os.path.getsize(f) for f in file_paths if os.path.isfile(f))
-    print(f"Stage 2 and kernel size is {all_file_sizes} B.")
-    sectors = (all_file_sizes + 511) // 512
-    print(f"That adds up to {sectors} sectors.")
-    with open('out/sectors.inc', 'w') as f:
-        f.write(f"SECTORS_TO_READ equ {sectors}\n")
-    print("SECTORS_TO_READ written to out/sectors.inc")
+def calculate_sectors(module_file_path, constant_name, output_file_path):
+    file_size = os.path.getsize(module_file_path)
+    sectors_count = (file_size + 511) // 512
+    
+    with open(output_file_path, 'w') as f:
+        f.write(f"{constant_name} equ {sectors_count}\n")
+
+def write_stage2_size(out_path):
+    with open(out_path, 'w') as f:
+        f.write(f"STAGE2_SECTORS equ {stage2_sectors}\n")
 
 def create_disk_image():
     print("Joining the OS files...")
@@ -126,6 +128,25 @@ def run_qemu(memory_size):
         sys.exit(0)
 
 
+def qemu_debug_registers():
+    qemu = subprocess.Popen(
+    [
+        "qemu-system-x86_64",
+        "-drive", "format=raw,file=out/os.img",
+        "-monitor", "stdio"
+    ],
+    stdin=subprocess.PIPE,
+    text=True
+)
+
+    time.sleep(2)
+
+    qemu.stdin.write("info registers\n")
+    qemu.stdin.flush()
+
+    qemu.wait()
+
+
 def clean_all():
     subprocess.run(['rm', '-rf', 'out'])
 
@@ -143,14 +164,14 @@ def main():
         return
     
     os.makedirs('out', exist_ok=True)
-
     write_stack_size()
     prepare_linker_script()
 
-    assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
-    compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker_ready.ld')
+    compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker.ld')
+    calculate_sectors("out/kernel.elf", "KERNEL_SECTORS", 'out/kernel_sectors.inc')
 
-    calculate_sectors(['out/bootloader_stage2.bin', 'out/kernel.elf'])
+    write_stage2_size('out/stage2_sectors.inc')
+    assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
 
     assemble_asm(bootloader_sources[0], 'out/bootloader_stage1.bin')
     
@@ -158,9 +179,12 @@ def main():
 
     print('\033[32mDone\033[0m\n') # green
 
-    if len(sys.argv) > 1 and sys.argv[1] == "run":
-        memory_size = sys.argv[2] if len(sys.argv) > 2 else '4G'
-        run_qemu(memory_size)
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "run":
+            memory_size = sys.argv[2] if len(sys.argv) > 2 else '4G'
+            run_qemu(memory_size)
+        if sys.argv[1] == "dreg":
+            qemu_debug_registers()
 
 if __name__ == '__main__':
     main()

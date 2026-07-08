@@ -1,18 +1,19 @@
-%include "out/sectors.inc" ; count of sectors of compiled stage2 and kernel
+%include "out/stage2_sectors.inc"
 
 [org 0x7C00]
 jmp word 0x0000:start ; Make sure we have address 0x0000:0x7C00, NOT 0x07C0:0x0000.
 
 start:
+	mov [boot_drive], dl ; Save boot drive
 	; Read the 2nd stage of the bootloader from the 2nd sector of the disk.
 	mov ah, 0x42	; extended read
-					; DL already set (?)
+
 	mov si, disk_address_packet
 	int 0x13
 
 	jc error
 	
-
+	mov dl, [boot_drive] ; restore boot drive
 	jmp word 0x2000:0x0000
 
 	; The CPU should never reach here.
@@ -36,12 +37,13 @@ error:
 
 error_message: db "Error reading disk.", 0
 
+boot_drive db 0
 ; Disk address packet is a structure for BIOS to read linear sectors.
 disk_address_packet:
 	db 0x10		; structure size
 	db 0		; reserved
 
-	dw SECTORS_TO_READ
+	dw STAGE2_SECTORS
 
 	; read to [0x2000:0]
 	dw 0		; offset
