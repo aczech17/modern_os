@@ -1,11 +1,27 @@
+%include "out/stage2_sectors.inc"
+%include "out/kernel_sectors.inc"
+%include "out/stack_size.inc"
+
+KERNEL_LBA equ (STAGE2_SECTORS + 1)
 SMAP equ 0x0534D4150
 MAX_MEMORY_SECTIONS_COUNT equ 128
-%include "out/stack_size.inc"
 
 [bits 16]
 [org 0x20000]
 stage2:
-	; Enable A20 http://wiki.osdev.org/A20_Line
+; set up segment registers
+	mov ax, 0x2000
+	mov ds, ax
+	mov es, ax
+
+	mov [boot_drive], dl	; Save boot drive.
+
+	mov ax, 0x1f00
+	mov ss, ax
+	mov sp, 0
+
+enable_a20:
+	; http://wiki.osdev.org/A20_Line
 	mov ax, 0x2401
 	int 0x15
 
@@ -13,14 +29,6 @@ stage2:
 	or al, 2
 	out 0x92, al
 
-; set up segment registers
-	mov ax, 0x2000
-	mov ds, ax
-	mov es, ax
-
-	mov ax, 0x1f00
-	mov ss, ax
-	mov sp, 0
 
 detect_memory:
 	mov di, memory_sections.entries
@@ -72,6 +80,74 @@ detect_memory:
 .fail:
 	jmp $
 .done:
+
+
+load_kernel:
+.next:
+	cmp dword [kernel_sectors_left], 0
+	je .done
+
+	; max 127 sectors per one BIOS read
+	mov eax, [kernel_sectors_left]
+	cmp eax, 127
+	jbe .count_ok
+
+	mov ax, 127
+	jmp .set_count
+
+.count_ok:
+	mov ax, word [kernel_sectors_left]
+
+.set_count:
+	mov [dap.sector_count], ax
+
+	; destination buffer
+	mov ax, [kernel_load_offset]
+	mov [dap.offset], ax
+
+	mov ax, [kernel_load_segment]
+	mov [dap.segment], ax
+
+	; LBA
+	mov eax, [kernel_current_lba]
+	mov [dap.lba], eax
+
+	mov eax, [kernel_current_lba + 4]
+	mov [dap.lba + 4], eax
+
+	; BIOS extended read
+	mov ah, 0x42
+	mov dl, [boot_drive]
+	mov si, dap
+	int 0x13
+
+	jc $
+
+	; sectors read
+
+	movzx eax, word [dap.sector_count]
+	add word [kernel_current_lba], ax
+	adc word [kernel_current_lba + 2], 0
+	adc word [kernel_current_lba + 4], 0
+	adc word [kernel_current_lba + 6], 0
+
+	sub dword [kernel_sectors_left], eax
+
+	; move buffer forward
+	mov ax, [dap.sector_count]
+	shl ax, 9
+
+	add [kernel_load_offset], ax
+
+	; offset overflow
+	jnc .next
+
+	add word [kernel_load_segment], 0x1000
+	mov word [kernel_load_offset], 0
+
+	jmp .next
+.done:
+
 
     cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
 	lgdt [gdt_32.addr]
@@ -160,8 +236,7 @@ start_64:
 	mov ss, ax
 
     
-	; Now let's load the kernel.
-load_kernel:
+parse_kernel:
 	mov rsi, [abs kernel + 0x20]	; Load e_phof -- start of the program header table.
 								; Now in RSI we have the offset from the start of the kernel file,
 								; but we want the offset in the memory, so
@@ -235,6 +310,28 @@ jump_to_kernel:
 	jmp $
 
 
+
+boot_drive:				db 0
+
+kernel_current_lba: 	dq KERNEL_LBA
+kernel_sectors_left:	dd KERNEL_SECTORS
+kernel_load_segment: 	dw 0x2000
+kernel_load_offset: 	dw STAGE2_SECTORS * 512
+
+align 4
+dap:
+	db 0x10	; size
+	db 0	; reserved
+.sector_count:
+	dw 0
+.offset:
+	dw 0
+.segment:
+	dw 0
+.lba:
+	dq 0
+
+
 memory_sections:
 .count:
 	times 4 db 0
@@ -302,5 +399,5 @@ stack:
 .bottom:
 
 section .text
-times (512 - ($ - $$) % 512) db 0
+times STAGE2_SECTORS * 512 - ($ - $$) db 0
 kernel:
