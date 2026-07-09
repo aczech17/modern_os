@@ -4,7 +4,7 @@
 
 SMAP equ 0x0534D4150
 KERNEL_LBA equ (STAGE2_SECTORS + 1)
-KERNEL_DESTINATION equ 0x00100000
+KERNEL_ADDDRESS equ 0x00100000
 MAX_MEMORY_SECTIONS_COUNT equ 128
 
 
@@ -375,7 +375,7 @@ boot_drive:				db 0
 
 kernel_current_lba:		dq KERNEL_LBA
 kernel_sectors_left:	dd KERNEL_SECTORS
-kernel_destination:		dd KERNEL_DESTINATION ; ???
+kernel_destination:		dd KERNEL_ADDDRESS ; ???
 ;kernel_buffer:          dd 0x00080000
 
 align 4
