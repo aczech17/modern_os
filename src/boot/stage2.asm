@@ -32,35 +32,6 @@ enable_a20:
 	out 0x92, al
 
 
-enter_unreal_mode:
-	cli
-
-	lgdt [gdt_32.addr]
-
-	mov eax, cr0
-	or eax, 1
-	mov cr0, eax
-
-	jmp 0x08:.protected
-.protected:
-	[bits 32]
-
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-
-	mov eax, cr0
-	and eax, 0xfffffffe
-	mov cr0, eax
-
-	jmp 0:.real
-.real:
-	[bits 16]
-	mov ax,0x10
-    mov ds,ax
-    mov es,ax
-	sti
-
 detect_memory:
 	mov di, memory_sections.entries
 	mov ebx, 0
@@ -112,6 +83,53 @@ detect_memory:
 	jmp $
 .done:
 
+
+enter_unreal_mode:
+	cli
+    lgdt [unreal_gdt.addr]
+
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+    jmp dword 0x08:.protected32
+
+	[bits 32]
+.protected32:
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+	mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    jmp 0x18:.protected16
+    [bits 16]
+.protected16:
+	mov eax, cr0
+	and eax, ~1
+	mov cr0, eax
+
+	jmp 0x2000:.real16
+.real16:
+
+; For loading kernel BIOS needs DS=0x2000 for source and ES=0 for destination.
+	mov ax, 0x2000
+	mov ds, ax
+
+    mov ax, 0
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+	mov ax, 0x1F00
+	mov ss, ax
+	mov sp, 0
+
+    sti
+
+
+
 load_kernel:
 .next:
 	cmp dword [kernel_sectors_left], 0
@@ -138,9 +156,9 @@ load_kernel:
 	; LBA
 	mov eax, [kernel_current_lba]
 	mov [dap.lba], eax
-
 	mov eax, [kernel_current_lba + 4]
 	mov [dap.lba + 4], eax
+
 
 	mov ah, 0x42
 	mov dl, [boot_drive]
@@ -148,7 +166,8 @@ load_kernel:
 
 	; go!
 	int 0x13
-	jc $
+	jc .fail
+
 
 	; How many was actually read
 	movzx eax, word [dap.sector_count]
@@ -156,16 +175,17 @@ load_kernel:
 	; Update LBA
 	add dword [kernel_current_lba], eax
 	adc dword [kernel_current_lba + 4], 0
-
 	sub dword [kernel_sectors_left], eax
 
 
 	; Copying from 0x80000 to kernel_destination
-	mov esi, 0x80000
+	mov esi, 0x60000
 	mov edi, [kernel_destination]
 
 	mov ecx, eax
 	shl ecx, 7		; Sectors * 512 / 4
+
+	cld
 	rep movsd
 
 	; Shift destination address
@@ -174,8 +194,22 @@ load_kernel:
 	add dword [kernel_destination], eax
 
 	jmp .next
-
+.fail:
+    mov bx, ax
+    mov ax, 0xB800
+    mov es, ax
+    
+    mov word [es:0], 0x0C45 ; Red 'E'
+    
+    mov al, bh
+    mov ah, 0x0C
+    mov [es:2], ax      
+    
+    jmp $
 .done:
+	; Zero DS (???)
+	mov ax, 0
+	mov ds, ax
 
     cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
 	lgdt [gdt_32.addr]
@@ -257,13 +291,11 @@ start_64:
 	;	+------------+--+--+--+
 	;	| GDT index  |TI| CPL |
 	;	+------------+--+--+--+
-
 	mov ax, (2 << 3)
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
 
-    
 parse_kernel:
 	mov rsi, [abs kernel + 0x20]	; Load e_phof -- start of the program header table.
 								; Now in RSI we have the offset from the start of the kernel file,
@@ -356,7 +388,7 @@ dap:
 	dw 0
 .segment:
 	dw 0
-.lba:
+.lba:;
 	dq 0
 
 memory_sections:
@@ -364,6 +396,40 @@ memory_sections:
 	times 4 db 0
 .entries:
 	times MAX_MEMORY_SECTIONS_COUNT * 24 db 0
+
+
+align 16
+unreal_gdt:
+    dq 0                        ; 0x00 - null descriptor
+
+    ; 0x08 - Code segment (32-bit)
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 0x9A                     ; code, present, readable
+    db 0xCF                     ; 4KB gran, 32-bit
+    db 0
+
+    ; 0x10 - Data segment (32-bit, 4GB)
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 0x92                     ; data, present, writable
+    db 0xCF                     ; 4KB gran, 32-bit
+    db 0
+
+    ; 0x18 - NOWY WPIS: Code segment (16-bit) konieczny do powrotu
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 0x9A                     ; code, present, readable
+    db 0x0F                     ; 16-bit, limit 64KB (brak flagi D/B)
+    db 0
+
+.addr:
+    dw unreal_gdt.addr - unreal_gdt - 1
+    dd unreal_gdt
+
 
 align 32
 gdt_32:
