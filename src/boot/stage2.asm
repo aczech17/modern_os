@@ -3,10 +3,14 @@
 %include "out/stack_size.inc"
 
 SMAP equ 0x0534D4150
-KERNEL_LBA equ (STAGE2_SECTORS + 1)
-KERNEL_ADDDRESS equ 0x00100000
 MAX_MEMORY_SECTIONS_COUNT equ 128
 
+KERNEL_LBA 				equ (STAGE2_SECTORS + 1)
+KERNEL_ADDDRESS 		equ 0x00100000
+KERNEL_BUFFER_ADDRESS	equ 0x20000 + STAGE2_SECTORS * 512
+KERNEL_BUFFER_SEGMENT	equ 0x2000
+KERNEL_BUFFER_OFFSET 	equ 0x4000
+KERNEL_BUFFER_SECTORS 	equ 32
 
 [bits 16]
 [org 0x20000]
@@ -84,26 +88,68 @@ detect_memory:
 .done:
 
 
-enter_unreal_mode:
+load_kernel:
+.next:
+	mov ebx, [kernel_sectors_left]
+
+	cmp ebx, 0
+	je .done
+
+	cmp ebx, KERNEL_BUFFER_SECTORS
+	jle .fits
+.trim:
+	mov ebx, KERNEL_BUFFER_SECTORS
+.fits:
+	mov [dap.sector_count], bx
+
+	mov ah, 0x42
+	mov si, dap
+	mov dl, [boot_drive]
+
+	int 0x13
+	jc .error
+
+	; Temporarily enter 32 bit mode.
 	cli
-    lgdt [unreal_gdt.addr]
+	lgdt [unreal_gdt.addr]
 
-    mov eax, cr0
-    or eax, 1
-    mov cr0, eax
+	mov eax, cr0
+	or eax, 1
+	mov cr0, eax
 
-    jmp dword 0x08:.protected32
-
-	[bits 32]
-.protected32:
-    mov ax, 0x10
+	jmp dword 0x8:.enter_32
+[bits 32]
+.enter_32:
+	mov ax, 0x10
     mov ds, ax
     mov es, ax
 	mov fs, ax
     mov gs, ax
-    mov ss, ax
 
-    jmp 0x18:.protected16
+	; REP MOVSB
+	; DS:SI -> ES:DI
+
+	; ECX is number of bytes to copy.
+	; dap.sector_counts has info about 
+	; how many sectors were read to memory.
+	; We want to copy sectors_count * 512 bytes.
+	movzx ecx, word [dap.sector_count]
+	shl ecx, 9
+
+	; Set destination in EDI.
+	mov edi, [kernel_destination]
+
+	; We conform to real mode address calculation:
+	; Segment << 4 + offset
+	mov esi, KERNEL_BUFFER_SEGMENT
+	shl esi, 4
+	add esi, KERNEL_BUFFER_OFFSET
+	
+	rep movsb
+
+
+	; Return to real mode.
+	jmp 0x18:.protected16
     [bits 16]
 .protected16:
 	mov eax, cr0
@@ -112,106 +158,33 @@ enter_unreal_mode:
 
 	jmp 0x2000:.real16
 .real16:
-
-; For loading kernel BIOS needs DS=0x2000 for source and ES=0 for destination.
 	mov ax, 0x2000
 	mov ds, ax
-
-    mov ax, 0
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-
-	mov ax, 0x1F00
-	mov ss, ax
-	mov sp, 0
-
-    sti
-
-
-
-load_kernel:
-.next:
-	cmp dword [kernel_sectors_left], 0
-	je .done
-
-	mov eax, [kernel_sectors_left]
-
-	cmp eax, 127
-	jbe .count_ok
-
-	mov eax, 127
-	jmp .count_set
-
-.count_ok:
-	mov eax, [kernel_sectors_left]
-
-.count_set:
-	mov [dap.sector_count], ax
-
-	; Set BIOS buffer
-	mov word [dap.offset], 0
-	mov word [dap.segment], 0x8000
-
-	; LBA
-	mov eax, [kernel_current_lba]
-	mov [dap.lba], eax
-	mov eax, [kernel_current_lba + 4]
-	mov [dap.lba + 4], eax
-
-
-	mov ah, 0x42
-	mov dl, [boot_drive]
-	mov si, dap
-
-	; go!
-	int 0x13
-	jc .fail
-
-
-	; How many was actually read
+	mov es, ax
+	
 	movzx eax, word [dap.sector_count]
 
-	; Update LBA
-	add dword [kernel_current_lba], eax
-	adc dword [kernel_current_lba + 4], 0
+	add dword [dap.lba], eax
+	adc dword [dap.lba + 4], 0
+
 	sub dword [kernel_sectors_left], eax
 
-
-	; Copying from 0x80000 to kernel_destination
-	mov esi, 0x60000
-	mov edi, [kernel_destination]
-
-	mov ecx, eax
-	shl ecx, 7		; Sectors * 512 / 4
-
-	cld
-	rep movsd
-
-	; Shift destination address
-	movzx eax, word [dap.sector_count]
+	
 	shl eax, 9
+	; Now EAX has number of bytes read.
 	add dword [kernel_destination], eax
-
+	
 	jmp .next
-.fail:
-    mov bx, ax
-    mov ax, 0xB800
-    mov es, ax
-    
-    mov word [es:0], 0x0C45 ; Red 'E'
-    
-    mov al, bh
-    mov ah, 0x0C
-    mov [es:2], ax      
-    
-    jmp $
-.done:
-	; Zero DS (???)
-	mov ax, 0
-	mov ds, ax
+.error:
+	mov ax, 0xB800
+	mov es, ax
 
-    cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
+	mov word [es:0], 0x0C58
+
+	mov eax, 0x2137
+	jmp $
+.done:
+	cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
 	lgdt [gdt_32.addr]
 
 	; Set 0 bit in the CR0 to enable protected mode.
@@ -296,6 +269,9 @@ start_64:
 	mov es, ax
 	mov ss, ax
 
+	mov rax, 0x2138
+	jmp $
+
 parse_kernel:
 	mov rsi, [abs kernel + 0x20]	; Load e_phof -- start of the program header table.
 								; Now in RSI we have the offset from the start of the kernel file,
@@ -373,9 +349,10 @@ jump_to_kernel:
 
 boot_drive:				db 0
 
-kernel_current_lba:		dq KERNEL_LBA
+;kernel_current_lba:		dq KERNEL_LBA
 kernel_sectors_left:	dd KERNEL_SECTORS
-kernel_destination:		dd KERNEL_ADDDRESS ; ???
+
+kernel_destination:		dd KERNEL_ADDDRESS
 ;kernel_buffer:          dd 0x00080000
 
 align 4
@@ -383,13 +360,14 @@ dap:
 	db 0x10	; size
 	db 0	; reserved
 .sector_count:
-	dw 0
+	dw KERNEL_BUFFER_SECTORS 	; int 13 resets this to # of 
+								; sectors actually read/written
 .offset:
-	dw 0
+	dw KERNEL_BUFFER_OFFSET
 .segment:
-	dw 0
-.lba:;
-	dq 0
+	dw KERNEL_BUFFER_SEGMENT
+.lba:
+	dq KERNEL_LBA
 
 memory_sections:
 .count:
@@ -397,6 +375,30 @@ memory_sections:
 .entries:
 	times MAX_MEMORY_SECTIONS_COUNT * 24 db 0
 
+
+; align 16
+; return_real_gdt:
+;     dq 0                      ; null descriptor
+
+;     ; 0x08 - code 32-bit
+;     dw 0xffff
+;     dw 0x0000
+;     db 0x00
+;     db 0x9a
+;     db 0xcf
+;     db 0x00
+
+;     ; 0x10 - data 32-bit, base = 0x2000
+;     dw 0xffff                 ; limit 0:15
+;     dw 0x2000                 ; base 0:15
+;     db 0x00                   ; base 16:23
+;     db 0x92                   ; present, ring0, data writable
+;     db 0xcf                   ; limit 16:19, 4K granularity, 32-bit
+;     db 0x00                   ; base 24:31
+; .end:
+; .addr:
+; 	dw (.end - return_real_gdt) - 1
+; 	dd return_real_gdt
 
 align 16
 unreal_gdt:
@@ -418,14 +420,12 @@ unreal_gdt:
     db 0xCF                     ; 4KB gran, 32-bit
     db 0
 
-    ; 0x18 - NOWY WPIS: Code segment (16-bit) konieczny do powrotu
     dw 0xFFFF
     dw 0
     db 0
     db 0x9A                     ; code, present, readable
     db 0x0F                     ; 16-bit, limit 64KB (brak flagi D/B)
     db 0
-
 .addr:
     dw unreal_gdt.addr - unreal_gdt - 1
     dd unreal_gdt
