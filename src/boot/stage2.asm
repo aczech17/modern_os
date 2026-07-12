@@ -6,11 +6,10 @@ SMAP equ 0x0534D4150
 MAX_MEMORY_SECTIONS_COUNT equ 128
 
 KERNEL_LBA 				equ (STAGE2_SECTORS + 1)
-KERNEL_ADDDRESS 		equ 0x00100000
-KERNEL_BUFFER_ADDRESS	equ 0x20000 + STAGE2_SECTORS * 512
 KERNEL_BUFFER_SEGMENT	equ 0x2000
 KERNEL_BUFFER_OFFSET 	equ 0x4000
 KERNEL_BUFFER_SECTORS 	equ 32
+KERNEL_ADDDRESS 		equ 0x100000
 
 [bits 16]
 [org 0x20000]
@@ -111,7 +110,7 @@ load_kernel:
 
 	; Temporarily enter 32 bit mode.
 	cli
-	lgdt [unreal_gdt.addr]
+	lgdt [gdt_32.addr]
 
 	mov eax, cr0
 	or eax, 1
@@ -184,7 +183,7 @@ load_kernel:
 	mov eax, 0x2137
 	jmp $
 .done:
-	cli ; Disable the interrupts because 16-bit interrupt vector will be invalid in 32 bit.
+
 	lgdt [gdt_32.addr]
 
 	; Set 0 bit in the CR0 to enable protected mode.
@@ -348,12 +347,8 @@ jump_to_kernel:
 
 
 boot_drive:				db 0
-
-;kernel_current_lba:		dq KERNEL_LBA
 kernel_sectors_left:	dd KERNEL_SECTORS
-
 kernel_destination:		dd KERNEL_ADDDRESS
-;kernel_buffer:          dd 0x00080000
 
 align 4
 dap:
@@ -375,82 +370,51 @@ memory_sections:
 .entries:
 	times MAX_MEMORY_SECTIONS_COUNT * 24 db 0
 
-
-; align 16
-; return_real_gdt:
-;     dq 0                      ; null descriptor
-
-;     ; 0x08 - code 32-bit
-;     dw 0xffff
-;     dw 0x0000
-;     db 0x00
-;     db 0x9a
-;     db 0xcf
-;     db 0x00
-
-;     ; 0x10 - data 32-bit, base = 0x2000
-;     dw 0xffff                 ; limit 0:15
-;     dw 0x2000                 ; base 0:15
-;     db 0x00                   ; base 16:23
-;     db 0x92                   ; present, ring0, data writable
-;     db 0xcf                   ; limit 16:19, 4K granularity, 32-bit
-;     db 0x00                   ; base 24:31
-; .end:
-; .addr:
-; 	dw (.end - return_real_gdt) - 1
-; 	dd return_real_gdt
-
-align 16
-unreal_gdt:
-    dq 0                        ; 0x00 - null descriptor
-
-    ; 0x08 - Code segment (32-bit)
-    dw 0xFFFF
-    dw 0
-    db 0
-    db 0x9A                     ; code, present, readable
-    db 0xCF                     ; 4KB gran, 32-bit
-    db 0
-
-    ; 0x10 - Data segment (32-bit, 4GB)
-    dw 0xFFFF
-    dw 0
-    db 0
-    db 0x92                     ; data, present, writable
-    db 0xCF                     ; 4KB gran, 32-bit
-    db 0
-
-    dw 0xFFFF
-    dw 0
-    db 0
-    db 0x9A                     ; code, present, readable
-    db 0x0F                     ; 16-bit, limit 64KB (brak flagi D/B)
-    db 0
-.addr:
-    dw unreal_gdt.addr - unreal_gdt - 1
-    dd unreal_gdt
-
-
 align 32
 gdt_32:
-	; Flat mode, base = 0x0, limit = 0xFFFFFFFF
-.null:
-	dd 0
-	dd 0
-.code:
-	dd 0x0000_FFFF  ; base (15 - 0) limit (15 - 0)
-	dd    (0b1010 << 8) 					    | (1 << 12) 		|  (1 << 15) | (0xF << 16)   | (1 << 22)     | (1 << 23)
-	;  code nonconforming readable notaccessed, descriptor type=code   present     limit(19-16)    32 bit segment  granularity
+    dq 0                        ; 0x00 - null descriptor
+
+.code1:
+    db 0xFF						; limit[7:0]
+	db 0xFF						; limit[15:8]
+	
+    db 0						; base[7:0]
+	db 0						; base[15:8]
+    db 0						; base[23:16]
+
+    db 0x9A                     ; code, present, readable
+
+    db 0xCF                     ; limit[19:16] + flags
+	; 4KB gran, 32-bit
+	
+
+    db 0						; base [31:24]
+
 .data:
-	dd 0xFFFF  ; segment limit
-	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 22) | (1 << 23)
-.null_2:
-	dd 0
-	dd 0
-.end:
+    db 0xFF
+	db 0xFF
+
+
+    db 0
+	db 0
+    db 0
+
+    db 0x92                     ; data, present, writable
+
+    db 0xCF                     ; 4KB gran, 32-bit
+	
+    db 0
+
+.code2:
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 0x9A                     ; code, present, readable
+    db 0x0F                     ; 16-bit, limit 64KB
+    db 0
 .addr:
-	dw (.end - gdt_32) - 1
-	dd gdt_32
+    dw gdt_32.addr - gdt_32 - 1
+    dd gdt_32
 
 
 align 32
