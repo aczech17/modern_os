@@ -9,7 +9,7 @@ KERNEL_LBA 				equ (STAGE2_SECTORS + 1)
 KERNEL_BUFFER_SEGMENT	equ 0x2000
 KERNEL_BUFFER_OFFSET 	equ 0x4000
 KERNEL_BUFFER_SECTORS 	equ 32
-KERNEL_ADDDRESS 		equ 0x100000
+KERNEL_ADDRESS 			equ 0x100000
 
 [bits 16]
 [org 0x20000]
@@ -177,13 +177,11 @@ load_kernel:
 .error:
 	mov ax, 0xB800
 	mov es, ax
-
 	mov word [es:0], 0x0C58
-
-	mov eax, 0x2137
 	jmp $
 .done:
 
+	cli		; Disable interrupts once again, just to be sure.
 	lgdt [gdt_32.addr]
 
 	; Set 0 bit in the CR0 to enable protected mode.
@@ -268,16 +266,11 @@ start_64:
 	mov es, ax
 	mov ss, ax
 
-	mov rax, 0x2138
-	jmp $
-
 parse_kernel:
-	mov rsi, [abs kernel + 0x20]	; Load e_phof -- start of the program header table.
-								; Now in RSI we have the offset from the start of the kernel file,
-								; but we want the offset in the memory, so
-	add rsi, kernel				; we add to RSI the size of the stage 2.
+	mov rsi, [abs KERNEL_ADDRESS + 0x20]		; Load e_phof - start of the program header table.
+	add rsi, KERNEL_ADDRESS						; Now in RSI we have the memory address of e_phof.
 
-	movzx ecx, word [abs kernel + 0x38]	; Load e_phnum -- the number of entries in the program header table.
+	movzx ecx, word [abs KERNEL_ADDRESS + 0x38]	; Load e_phnum -- the number of entries in the program header table.
 
 	cld			; Clear direction flag for future rep movsb.
 .ph_loop:
@@ -302,9 +295,9 @@ parse_kernel:
 	rep stosb
 
 	; load ELF section to memory
-	lea rsi, [kernel + r8d]	; source (kernel start + p_offset)
-	mov rdi, r9				; destination  (p_vaddr)
-	mov rcx, r10			; count of bytes (p_filesz)
+	lea rsi, [abs KERNEL_ADDRESS + r8d]	; source (kernel start + p_offset)
+	mov rdi, r9							; destination  (p_vaddr)
+	mov rcx, r10					; count of bytes (p_filesz)
 	rep movsb
 
 	; Restore registers (RCX and RSI)
@@ -330,25 +323,26 @@ set_kernel_arguments:
 	mov esi, dword [abs memory_sections.count]
 
 	; Program header table
-	mov rdx, [abs kernel + 0x20]
-	add rdx, kernel
+	mov rdx, [abs KERNEL_ADDRESS + 0x20]
+	add rdx, KERNEL_ADDRESS
 
 	; Program header entry count
-	movzx rcx, word [abs kernel + 0x38]	; e_phnum -- numer of ph entries.
+	movzx rcx, word [abs KERNEL_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
 
 	mov r8, STACK_SIZE
 	
 jump_to_kernel:
-	mov rax, [abs kernel + 0x18]		; e_entry -- entry point
-	call rax						; Finally jump to the kernel.
+	mov rax, [abs KERNEL_ADDRESS + 0x18]		; e_entry -- entry point
+	call rax									; Finally jump to the kernel.
 
+	; The CPU should never reach here.
 	jmp $
 
 
 
 boot_drive:				db 0
 kernel_sectors_left:	dd KERNEL_SECTORS
-kernel_destination:		dd KERNEL_ADDDRESS
+kernel_destination:		dd KERNEL_ADDRESS
 
 align 4
 dap:
