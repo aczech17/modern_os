@@ -8,7 +8,7 @@ STAGE2_SECTORS 				equ (stage2_end - stage2) / 512
 KERNEL_LBA 					equ (STAGE2_SECTORS + 1)
 KERNEL_BUFFER_SEGMENT		equ 0x2000
 KERNEL_BUFFER_OFFSET 		equ 0x4000
-KERNEL_BUFFER_SECTORS 		equ 32
+KERNEL_BUFFER_SECTORS 		equ 64
 KERNEL_ADDRESS 				equ 0x100000
 
 [bits 16]
@@ -19,12 +19,12 @@ stage2:
 	mov ds, ax
 	mov es, ax
 
-	mov [boot_drive], dl	; Save boot drive.
-
 	mov ax, 0x1f00
 	mov ss, ax
 	mov sp, 0
-
+	
+	; Save boot drive.
+	mov [boot_drive], dl
 enable_a20:
 	; http://wiki.osdev.org/A20_Line
 	mov ax, 0x2401
