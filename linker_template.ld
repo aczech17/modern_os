@@ -1,4 +1,4 @@
-ENTRY(stage1)
+ENTRY(kernel_main)
 
 PHDRS
 {
@@ -18,10 +18,11 @@ SECTIONS
         KEEP(*(.stage2))
     }
 
-    . = 0x100000;
-    .bss : {
-        *(.bss)
-    } :data
+    . = STACK_BOTTOM;
+    .stack (NOLOAD) :
+    {
+        . += STACK_SIZE;
+    }
 
     . = TEXT_ADDR;
     .text : ALIGN(4K) {

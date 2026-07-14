@@ -1,5 +1,5 @@
-%include "out/kernel_sectors.inc"
-%include "out/stack_size.inc"
+; %include "out/kernel_sectors.inc"
+; %include "out/stack_size.inc"
 
 SMAP 						equ 0x0534D4150
 MAX_MEMORY_SECTIONS_COUNT	equ 128
@@ -10,7 +10,18 @@ KERNEL_BUFFER_SEGMENT		equ 0x2000
 KERNEL_BUFFER_OFFSET 		equ 0x4000
 KERNEL_BUFFER_SECTORS 		equ 64
 
-KERNEL_BLOB_ADDRESS 				equ 0x100000
+
+%include "out/mem_layout.inc"
+; After include we've got:
+;	KERNEL_BLOB_SIZE
+;	KERNEL_BLOB_SECTORS
+;	STACK_BOTTOM
+;	STACK_SIZE
+;	STACK_TOP
+;	KERNEL_TEXT_ADDR
+
+
+KERNEL_BLOB_ADDRESS equ (KERNEL_TEXT_ADDR + KERNEL_BLOB_SIZE)
 
 [bits 16]
 [org 0x20000]
@@ -312,7 +323,7 @@ parse_kernel:
 
 
 set_up_stack:
-	mov rbp, stack.bottom
+	mov rbp, STACK_TOP
 	mov rsp, rbp
 
 set_kernel_arguments:
@@ -342,7 +353,7 @@ jump_to_kernel:
 
 
 boot_drive:				db 0
-kernel_sectors_left:	dd KERNEL_SECTORS
+kernel_sectors_left:	dd KERNEL_BLOB_SECTORS
 kernel_destination:		dd KERNEL_BLOB_ADDRESS
 
 align 4
@@ -444,13 +455,6 @@ page_table:
 .level2:
 	times 512 dq 0
 
-section .bss
-stack:
-.top:
-	resb STACK_SIZE
-.bottom:
-
-section .text
 times (512 - (($ - $$) % 512)) % 512 db 0 ; Padding to full sector.
 stage2_end:
 

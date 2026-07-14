@@ -12,8 +12,10 @@ kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memor
                   'src/memory/page_table.c']
 linker_script_template = 'linker_template.ld'
 
+stack_bottom = 1 << 20
 stack_size = 1 << 24
-text_addr = (1 << 20) + stack_size
+stack_top = stack_bottom + stack_size
+text_addr = stack_top
 
 def check_tools(needed_tools):
     missing_tools = []
@@ -32,11 +34,11 @@ def check_tools(needed_tools):
     return True
 
 
-def write_stack_size():
-    print("Writing stack size...")
-    with open('out/stack_size.inc', 'w') as f:
-        f.write(f"STACK_SIZE equ {stack_size}\n")
-    print(f"STACK_SIZE written to out/stack_size.inc as {stack_size}")
+# def write_stack_size():
+#     print("Writing stack size...")
+#     with open('out/stack_size.inc', 'w') as f:
+#         f.write(f"STACK_SIZE equ {stack_size}\n")
+#     print(f"STACK_SIZE written to out/stack_size.inc as {stack_size}")
 
 
 def prepare_linker_script():
@@ -44,7 +46,10 @@ def prepare_linker_script():
     with open(linker_script_template, 'r') as f:
         linker_script_content = f.read()
 
+    linker_script_content = linker_script_content.replace("STACK_BOTTOM", f"0x{stack_bottom:X}")
+    linker_script_content = linker_script_content.replace("STACK_SIZE", f"0x{stack_size:X}")
     linker_script_content = linker_script_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
+
     linker_script_path = 'out/linker.ld'
 
     with open(linker_script_path, 'w') as f:
@@ -53,13 +58,7 @@ def prepare_linker_script():
     return linker_script_path
 
 
-def assemble_asm(source, output):
-    print(f"Assembling {source}.")
-    try:
-        subprocess.run(['nasm', '-f', 'bin', source, '-o', output], check=True)
-    except subprocess.CalledProcessError:
-        print(f"\033[31mError assembling {source}.\033[0m") # Red color
-        sys.exit(1)
+
 
 def compile_kernel(source_files, output, linker_script_path):
     print(f"Compiling {', '.join(source_files)} with linker script {linker_script_path} to {output}.")
@@ -91,6 +90,27 @@ def compile_kernel(source_files, output, linker_script_path):
         subprocess.run(compile_command, check=True)
     except subprocess.CalledProcessError:
         print("\033[31mError compiling kernel.\033[0m") # Red color
+        sys.exit(1)
+
+def write_mem_layout(kernel_path):
+    kernel_size = os.path.getsize(kernel_path)
+    kernel_sectors = (kernel_size + 511) // 512
+
+    with open('out/mem_layout.inc', 'w') as f:
+        f.write(f"KERNEL_BLOB_SIZE equ {kernel_size}\n")
+        f.write(f"KERNEL_BLOB_SECTORS equ {kernel_sectors}\n")
+        f.write(f"STACK_BOTTOM equ {stack_bottom}\n")        
+        f.write(f"STACK_SIZE equ {stack_size}\n")
+        f.write(f"STACK_TOP equ {stack_top}\n")
+        f.write(f"KERNEL_TEXT_ADDR equ {text_addr}\n")
+
+
+def assemble_asm(source, output):
+    print(f"Assembling {source}.")
+    try:
+        subprocess.run(['nasm', '-f', 'bin', source, '-o', output], check=True)
+    except subprocess.CalledProcessError:
+        print(f"\033[31mError assembling {source}.\033[0m") # Red color
         sys.exit(1)
 
 
@@ -163,11 +183,11 @@ def main():
         return
     
     os.makedirs('out', exist_ok=True)
-    write_stack_size()
     linker_script_path = prepare_linker_script()
 
     compile_kernel(kernel_sources, 'out/kernel.elf', linker_script_path)
-    calculate_sectors("out/kernel.elf", "KERNEL_SECTORS", 'out/kernel_sectors.inc')
+    # calculate_sectors("out/kernel.elf", "KERNEL_SECTORS", 'out/kernel_sectors.inc')
+    write_mem_layout('out/kernel.elf')
 
     assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
     calculate_sectors("out/bootloader_stage2.bin", "STAGE2_SECTORS", "out/stage2_sectors.inc")
