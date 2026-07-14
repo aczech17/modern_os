@@ -2,7 +2,7 @@
 #define PAGE_TABLE_H
 
 #include "../common.h"
-#include "memory_map.h"
+#include "phys_memory_map.h"
 
 typedef struct
 {
@@ -31,7 +31,7 @@ typedef struct
 }Page_table_tree;
 
 void zero_page_table_tree(Page_table_tree* tree);
-void identity_map_kernel(Page_table_tree* tree, const Memory_map* kernel_regions);
+void identity_map_kernel(Page_table_tree* tree, const Phys_memory_map* kernel_regions);
 u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr);
 void identity_map_2mb(Page_table_tree* tree);
 

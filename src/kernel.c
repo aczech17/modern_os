@@ -12,12 +12,11 @@
 */
 
 #include "vga.h"
-#include "memory/memory_map.h"
+#include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
 #include "memory/page_table.h"
-#include <stdalign.h>
 
-static void print_memory_map(const Memory_map* memory_regions, const char* name)
+static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
     print("%s:\n", name);
     u64 total_memory_available = 0;
@@ -50,27 +49,27 @@ static void print_free_frames(const Frame_allocator* frame_allocator)
     print("%ZFree frames:%X\n%z", 0x0A, free_frames);
 }
 
-void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_size)
+void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_bottom, u64 stack_top)
 {
     clear_screen(0x07);
     print("%ZSuper system!\n%z\n", 0x4E);
     
-    Memory_map memory_regions;
-    init_memory_map(&memory_regions, mmap_addr, mmap_count, 1 << 20); // Determnine which physical addresses are available.
-    
-    const u64 stack_top = 1 << 20;
-    u64 stack_bottom = stack_top + stack_size - 1;
+    Phys_memory_map phys_memory_regions;
 
-    Memory_map kernel_regions;
-    init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_top, stack_bottom);
+    // Determine which physical addresses are available.
+    init_phys_memory_map(&phys_memory_regions, mmap_addr, mmap_count, 1 << 20);
 
-    print_memory_map(&memory_regions, "available");
+    Phys_memory_map kernel_regions;
+    init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_bottom, stack_top);
+
+    print_memory_map(&phys_memory_regions, "available");
     print_memory_map(&kernel_regions, "kernel");
 
-
+    print("stack_bottom = %X\n", stack_bottom);
+    print("stack top = %X\n\n", stack_top);
 
     Frame_allocator frame_allocator;
-    init_frame_allocator(&frame_allocator, &memory_regions, &kernel_regions);
+    init_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
 
     print_free_frames(&frame_allocator);
 

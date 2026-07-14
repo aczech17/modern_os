@@ -8,7 +8,7 @@ build_tools = ["nasm", "gcc"]
 emulation_tools = ["qemu-system-x86_64"]
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
-kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/frame_allocator.c',
+kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c']
 
 linker_script_template = 'linker_template.ld'
@@ -24,7 +24,7 @@ def check_tools(needed_tools):
 
     for tool in needed_tools:
         if not shutil.which(tool):
-            missing_tools.append(tool);
+            missing_tools.append(tool)
 
     if missing_tools:
         print("\033[33mFollowing tools are not installed. Install them first.")

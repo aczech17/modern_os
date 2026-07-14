@@ -1,16 +1,15 @@
-#include "memory_map.h"
-#include <stdbool.h>
+#include "phys_memory_map.h"
 
-void init_memory_map(Memory_map* mmap, u64 mmap_addr, u32 mmap_count, u64 low_mem_size)
+void init_phys_memory_map(Phys_memory_map* mmap, Phys_addr mmap_addr, u32 mmap_count, Phys_addr low_mem_size)
 {
     mmap->region_count = 0;
 
     for (u32 i = 0; i < mmap_count; ++i)
     {
-        u64 base = *(u64*)(mmap_addr + i * 24);
-        u64 size = *(u64*)(mmap_addr + i * 24 + 8);
+        Phys_addr base = *(u64*)(mmap_addr + i * 24);
+        Phys_addr size = *(u64*)(mmap_addr + i * 24 + 8);
         u32 type = *(u32*)(mmap_addr + i * 24 + 16);
-        u64 end = base + size - 1;
+        Phys_addr end = base + size - 1;
 
         if (type != 1 || base < low_mem_size)
             continue;
@@ -21,7 +20,8 @@ void init_memory_map(Memory_map* mmap, u64 mmap_addr, u32 mmap_count, u64 low_me
     }
 }
 
-void init_kernel_regions(Memory_map* kernel_regions, u64 ph_addr, u16 ph_count, u64 stack_top, u64 stack_bottom)
+void init_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16 ph_count,
+    Phys_addr stack_bottom, Phys_addr stack_top)
 {
     kernel_regions->region_count = 0;
     for (u16 i = 0; i < ph_count; ++i)
@@ -35,7 +35,7 @@ void init_kernel_regions(Memory_map* kernel_regions, u64 ph_addr, u16 ph_count, 
         ++kernel_regions->region_count;
     }
 
-    kernel_regions->start_addr[kernel_regions->region_count] = stack_top;
-    kernel_regions->end_addr[kernel_regions->region_count] = stack_bottom;
+    kernel_regions->start_addr[kernel_regions->region_count] = stack_bottom;
+    kernel_regions->end_addr[kernel_regions->region_count] = stack_top;
     ++kernel_regions->region_count;
 }

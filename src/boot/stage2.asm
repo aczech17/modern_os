@@ -338,7 +338,8 @@ set_kernel_arguments:
 	; Program header entry count
 	movzx rcx, word [abs KERNEL_BLOB_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
 
-	mov r8, STACK_SIZE
+	mov r8, STACK_BOTTOM
+	mov r9, STACK_TOP
 	
 jump_to_kernel:
 	mov rax, [abs KERNEL_BLOB_ADDRESS + 0x18]		; e_entry -- entry point

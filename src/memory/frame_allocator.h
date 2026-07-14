@@ -1,7 +1,7 @@
 #ifndef MEM_ALLOCATOR_H
 #define MEM_ALLOCATOR_H
 
-#include "memory_map.h"
+#include "phys_memory_map.h"
 #include "common.h"
 
 /*
@@ -13,13 +13,13 @@
 
 typedef struct
 {
-    Memory_map* available_regions;
-    Memory_map* kernel_regions;
+    Phys_memory_map* available_regions;
+    Phys_memory_map* kernel_regions;
     u8 frame_bitmap[FRAME_BITMAP_SIZE];
     u32 latest_allocated_block;
 }Frame_allocator;
 
-void init_frame_allocator(Frame_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions);
+void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions);
 u32 allocate_frame(Frame_allocator* allocator);
 void deallocate_frame(Frame_allocator* allocator, u32 frame_number);
 

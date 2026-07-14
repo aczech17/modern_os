@@ -139,7 +139,7 @@ void zero_page_table_tree(Page_table_tree* tree)
     }
 }
 
-void identity_map_kernel(Page_table_tree* pt_tree, const Memory_map* kernel_regions)
+void identity_map_kernel(Page_table_tree* pt_tree, const Phys_memory_map* kernel_regions)
 {
     for (u64 region = 0; region < kernel_regions->region_count; ++region)
     {

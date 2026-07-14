@@ -2,7 +2,7 @@
 #include "common.h"
 #include "../common.h"
 
-void init_frame_allocator(Frame_allocator* allocator, Memory_map* available_regions, Memory_map* kernel_regions)
+void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions)
 {
     allocator->available_regions = available_regions;
     allocator->kernel_regions = kernel_regions;
