@@ -9,7 +9,8 @@ KERNEL_LBA 					equ (STAGE2_SECTORS + 1)
 KERNEL_BUFFER_SEGMENT		equ 0x2000
 KERNEL_BUFFER_OFFSET 		equ 0x4000
 KERNEL_BUFFER_SECTORS 		equ 64
-KERNEL_ADDRESS 				equ 0x100000
+
+KERNEL_BLOB_ADDRESS 				equ 0x100000
 
 [bits 16]
 [org 0x20000]
@@ -267,10 +268,10 @@ start_64:
 	mov ss, ax
 
 parse_kernel:
-	mov rsi, [abs KERNEL_ADDRESS + 0x20]		; Load e_phof - start of the program header table.
-	add rsi, KERNEL_ADDRESS						; Now in RSI we have the memory address of e_phof.
+	mov rsi, [abs KERNEL_BLOB_ADDRESS + 0x20]		; Load e_phof - start of the program header table.
+	add rsi, KERNEL_BLOB_ADDRESS						; Now in RSI we have the memory address of e_phof.
 
-	movzx ecx, word [abs KERNEL_ADDRESS + 0x38]	; Load e_phnum -- the number of entries in the program header table.
+	movzx ecx, word [abs KERNEL_BLOB_ADDRESS + 0x38]	; Load e_phnum -- the number of entries in the program header table.
 
 	cld			; Clear direction flag for future rep movsb.
 .ph_loop:
@@ -295,7 +296,7 @@ parse_kernel:
 	rep stosb
 
 	; load ELF section to memory
-	lea rsi, [abs KERNEL_ADDRESS + r8d]	; source (kernel start + p_offset)
+	lea rsi, [abs KERNEL_BLOB_ADDRESS + r8d]	; source (kernel start + p_offset)
 	mov rdi, r9							; destination  (p_vaddr)
 	mov rcx, r10					; count of bytes (p_filesz)
 	rep movsb
@@ -323,16 +324,16 @@ set_kernel_arguments:
 	mov esi, dword [abs memory_sections.count]
 
 	; Program header table
-	mov rdx, [abs KERNEL_ADDRESS + 0x20]
-	add rdx, KERNEL_ADDRESS
+	mov rdx, [abs KERNEL_BLOB_ADDRESS + 0x20]
+	add rdx, KERNEL_BLOB_ADDRESS
 
 	; Program header entry count
-	movzx rcx, word [abs KERNEL_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
+	movzx rcx, word [abs KERNEL_BLOB_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
 
 	mov r8, STACK_SIZE
 	
 jump_to_kernel:
-	mov rax, [abs KERNEL_ADDRESS + 0x18]		; e_entry -- entry point
+	mov rax, [abs KERNEL_BLOB_ADDRESS + 0x18]		; e_entry -- entry point
 	call rax									; Finally jump to the kernel.
 
 	; The CPU should never reach here.
@@ -342,7 +343,7 @@ jump_to_kernel:
 
 boot_drive:				db 0
 kernel_sectors_left:	dd KERNEL_SECTORS
-kernel_destination:		dd KERNEL_ADDRESS
+kernel_destination:		dd KERNEL_BLOB_ADDRESS
 
 align 4
 dap:

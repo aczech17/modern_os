@@ -4,16 +4,18 @@ import sys
 import shutil
 import time
 
-needed_tools = ["nasm", "gcc", "qemu-system-x86_64", "expect"]
+build_tools = ["nasm", "gcc"]
+emulation_tools = ["qemu-system-x86_64"]
+
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c']
-linker_script = 'linker_template.ld'
+linker_script_template = 'linker_template.ld'
 
 stack_size = 1 << 24
 text_addr = (1 << 20) + stack_size
 
-def check_tools():
+def check_tools(needed_tools):
     missing_tools = []
 
     for tool in needed_tools:
@@ -39,25 +41,28 @@ def write_stack_size():
 
 def prepare_linker_script():
     print("Preparing linker script...")
-    with open(linker_script, 'r') as f:
-        linker_content = f.read()
+    with open(linker_script_template, 'r') as f:
+        linker_script_content = f.read()
 
-    linker_content = linker_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
+    linker_script_content = linker_script_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
+    linker_script_path = 'out/linker.ld'
 
-    with open('out/linker.ld', 'w') as f:
-        f.write(linker_content)
+    with open(linker_script_path, 'w') as f:
+        f.write(linker_script_content)
+    
+    return linker_script_path
 
 
 def assemble_asm(source, output):
     print(f"Assembling {source}.")
     try:
-        subprocess.run(['nasm', source, '-o', output], check=True)
+        subprocess.run(['nasm', '-f', 'bin', source, '-o', output], check=True)
     except subprocess.CalledProcessError:
         print(f"\033[31mError assembling {source}.\033[0m") # Red color
         sys.exit(1)
 
-def compile_kernel(source_files, output, linker_script):
-    print(f"Compiling {', '.join(source_files)} with linker script {linker_script} to {output}.")
+def compile_kernel(source_files, output, linker_script_path):
+    print(f"Compiling {', '.join(source_files)} with linker script {linker_script_path} to {output}.")
 
     compile_command = """
     gcc
@@ -73,12 +78,12 @@ def compile_kernel(source_files, output, linker_script):
     -Wextra
     -s
     {sources}
-    -T {linker_script}
+    -T {linker_script_path}
     -Wl,-e,kernel_main
     -o {output}
 """.format(
         sources=" ".join(source_files),
-        linker_script=linker_script,
+        linker_script_path=linker_script_path,
         output=output
     ).split()
 
@@ -92,6 +97,8 @@ def compile_kernel(source_files, output, linker_script):
 def calculate_sectors(module_file_path, constant_name, output_file_path):
     file_size = os.path.getsize(module_file_path)
     sectors_count = (file_size + 511) // 512
+
+    print(f"{module_file_path} has {sectors_count} sectors.")
     
     with open(output_file_path, 'w') as f:
         f.write(f"{constant_name} equ {sectors_count}\n")
@@ -103,7 +110,7 @@ def create_disk_image():
             with open(filename, "rb") as f:
                 img_file.write(f.read())
 
-def run_qemu(memory_size):
+def qemu_run(memory_size):
     if not memory_size[-1] in "KMG" or not memory_size[:-1].isdigit():
         print("\033[33mInvalid memory size. Use values like '512M', '4G', etc.\033[0m") # yellow
         return
@@ -119,7 +126,7 @@ def run_qemu(memory_size):
         sys.exit(0)
 
 
-def qemu_debug_registers():
+def qemu_debug(debug_command, delay):
     qemu = subprocess.Popen(
     [
         "qemu-system-x86_64",
@@ -130,35 +137,36 @@ def qemu_debug_registers():
     text=True
 )
 
-    time.sleep(2)
+    time.sleep(delay)
 
-    qemu.stdin.write("info registers\n")
+    qemu.stdin.write(f"{debug_command}\n")
     qemu.stdin.flush()
 
     qemu.wait()
 
 
 def clean_all():
-    subprocess.run(['rm', '-rf', 'out'])
+    shutil.rmtree('out', ignore_errors=True)
 
 
 def main():
-    if sys.platform.startswith("win"):
-        print("ERROR: This code is meant to be compiled on Linux.")
+    if sys.platform != 'linux':
+        print(f"ERROR: Unsupported platform {sys.platform}.")
+        print("This code is meant to be compiled on Linux. Cross compiling to ELF not supported yet.")
         return
     
     if len(sys.argv) > 1 and sys.argv[1] == "clean":
         clean_all()
         return
 
-    if check_tools() == False:
+    if check_tools(build_tools) == False:
         return
     
     os.makedirs('out', exist_ok=True)
     write_stack_size()
-    prepare_linker_script()
+    linker_script_path = prepare_linker_script()
 
-    compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker.ld')
+    compile_kernel(kernel_sources, 'out/kernel.elf', linker_script_path)
     calculate_sectors("out/kernel.elf", "KERNEL_SECTORS", 'out/kernel_sectors.inc')
 
     assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
@@ -171,11 +179,16 @@ def main():
     print('\033[32mDone\033[0m\n') # green
 
     if len(sys.argv) > 1:
+        if check_tools(emulation_tools) == False:
+            return
+
         if sys.argv[1] == "run":
             memory_size = sys.argv[2] if len(sys.argv) > 2 else '4G'
-            run_qemu(memory_size)
-        if sys.argv[1] == "dreg":
-            qemu_debug_registers()
+            qemu_run(memory_size)
+        if sys.argv[1] == "debug":
+            debug_command = sys.argv[2] if len(sys.argv) > 2 else 'info registers'
+            delay = int(sys.argv[3]) if len(sys.argv) > 3 else 2
+            qemu_debug(debug_command, delay)
 
 if __name__ == '__main__':
     main()
