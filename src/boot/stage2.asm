@@ -1,6 +1,3 @@
-; %include "out/kernel_sectors.inc"
-; %include "out/stack_size.inc"
-
 SMAP 						equ 0x0534D4150
 MAX_MEMORY_SECTIONS_COUNT	equ 128
 

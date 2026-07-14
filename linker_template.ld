@@ -8,34 +8,19 @@ PHDRS
 
 SECTIONS
 {
-    . = 0x00000000;
-    .stage1 : {
-        KEEP(*(.stage1))
-    }
-
-    . = 0x00000200;
-    .stage2 : {
-        KEEP(*(.stage2))
-    }
-
-    . = STACK_BOTTOM;
-    .stack (NOLOAD) :
-    {
-        . += STACK_SIZE;
-    }
-
     . = TEXT_ADDR;
-    .text : ALIGN(4K) {
+    .text : ALIGN(4K)
+    {
         *(.text)
     } :text
 
-    .rodata : ALIGN(4K) {
+    .rodata : ALIGN(4K)
+    {
         *(.rodata)
     } :text
 
-    .data : ALIGN(4K) {
+    .data : ALIGN(4K)
+    {
         *(.data)
     } :data
-
-    
 }

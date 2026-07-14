@@ -10,7 +10,9 @@ emulation_tools = ["qemu-system-x86_64"]
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c']
+
 linker_script_template = 'linker_template.ld'
+mem_layout_path = 'out/mem_layout.inc'
 
 stack_bottom = 1 << 20
 stack_size = 1 << 24
@@ -32,13 +34,6 @@ def check_tools(needed_tools):
         return False
 
     return True
-
-
-# def write_stack_size():
-#     print("Writing stack size...")
-#     with open('out/stack_size.inc', 'w') as f:
-#         f.write(f"STACK_SIZE equ {stack_size}\n")
-#     print(f"STACK_SIZE written to out/stack_size.inc as {stack_size}")
 
 
 def prepare_linker_script():
@@ -92,11 +87,20 @@ def compile_kernel(source_files, output, linker_script_path):
         print("\033[31mError compiling kernel.\033[0m") # Red color
         sys.exit(1)
 
-def write_mem_layout(kernel_path):
+     # Pad kernel ELF to full sectors
+    size = os.path.getsize(output)
+    padding = (-size) % 512
+
+    if padding:
+        with open(output, "ab") as f:
+            f.write(b"\0" * padding)
+    
+
+def write_kernel_layout(kernel_path):
     kernel_size = os.path.getsize(kernel_path)
     kernel_sectors = (kernel_size + 511) // 512
 
-    with open('out/mem_layout.inc', 'w') as f:
+    with open(mem_layout_path, 'w') as f:
         f.write(f"KERNEL_BLOB_SIZE equ {kernel_size}\n")
         f.write(f"KERNEL_BLOB_SECTORS equ {kernel_sectors}\n")
         f.write(f"STACK_BOTTOM equ {stack_bottom}\n")        
@@ -113,15 +117,13 @@ def assemble_asm(source, output):
         print(f"\033[31mError assembling {source}.\033[0m") # Red color
         sys.exit(1)
 
+def write_stage2_sectors_count(stage2_path):
+    stage2_size = os.path.getsize(stage2_path)
+    stage2_sectors = (stage2_size + 511) // 512
 
-def calculate_sectors(module_file_path, constant_name, output_file_path):
-    file_size = os.path.getsize(module_file_path)
-    sectors_count = (file_size + 511) // 512
+    with open(mem_layout_path, 'a') as f:
+        f.write(f"STAGE2_SECTORS equ {stage2_sectors}")
 
-    print(f"{module_file_path} has {sectors_count} sectors.")
-    
-    with open(output_file_path, 'w') as f:
-        f.write(f"{constant_name} equ {sectors_count}\n")
 
 def create_disk_image():
     print("Joining the OS files...")
@@ -186,11 +188,11 @@ def main():
     linker_script_path = prepare_linker_script()
 
     compile_kernel(kernel_sources, 'out/kernel.elf', linker_script_path)
-    # calculate_sectors("out/kernel.elf", "KERNEL_SECTORS", 'out/kernel_sectors.inc')
-    write_mem_layout('out/kernel.elf')
+    write_kernel_layout('out/kernel.elf')
 
     assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
-    calculate_sectors("out/bootloader_stage2.bin", "STAGE2_SECTORS", "out/stage2_sectors.inc")
+    write_stage2_sectors_count('out/bootloader_stage2.bin')
+
 
     assemble_asm(bootloader_sources[0], 'out/bootloader_stage1.bin')
     
