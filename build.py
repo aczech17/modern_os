@@ -12,7 +12,6 @@ linker_script = 'linker_template.ld'
 
 stack_size = 1 << 24
 text_addr = (1 << 20) + stack_size
-stage2_sectors = 32
 
 def check_tools():
     missing_tools = []
@@ -37,6 +36,7 @@ def write_stack_size():
         f.write(f"STACK_SIZE equ {stack_size}\n")
     print(f"STACK_SIZE written to out/stack_size.inc as {stack_size}")
 
+
 def prepare_linker_script():
     print("Preparing linker script...")
     with open(linker_script, 'r') as f:
@@ -58,11 +58,6 @@ def assemble_asm(source, output):
 
 def compile_kernel(source_files, output, linker_script):
     print(f"Compiling {', '.join(source_files)} with linker script {linker_script} to {output}.")
-
-    # compile_command = """
-    #     gcc -ffreestanding -nostartfiles -mno-red-zone -Wall -Wextra -s
-    #     {sources} -T {linker} -e kernel_main -o {output}
-    # """.format(sources=" ".join(source_files), linker=linker_script, output=output).split()
 
     compile_command = """
     gcc
@@ -100,10 +95,6 @@ def calculate_sectors(module_file_path, constant_name, output_file_path):
     
     with open(output_file_path, 'w') as f:
         f.write(f"{constant_name} equ {sectors_count}\n")
-
-def write_stage2_size(out_path):
-    with open(out_path, 'w') as f:
-        f.write(f"STAGE2_SECTORS equ {stage2_sectors}\n")
 
 def create_disk_image():
     print("Joining the OS files...")
@@ -170,8 +161,8 @@ def main():
     compile_kernel(kernel_sources, 'out/kernel.elf', 'out/linker.ld')
     calculate_sectors("out/kernel.elf", "KERNEL_SECTORS", 'out/kernel_sectors.inc')
 
-    write_stage2_size('out/stage2_sectors.inc')
     assemble_asm(bootloader_sources[1], 'out/bootloader_stage2.bin')
+    calculate_sectors("out/bootloader_stage2.bin", "STAGE2_SECTORS", "out/stage2_sectors.inc")
 
     assemble_asm(bootloader_sources[0], 'out/bootloader_stage1.bin')
     
@@ -188,3 +179,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

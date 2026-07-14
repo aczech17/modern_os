@@ -1,15 +1,15 @@
-%include "out/stage2_sectors.inc"
 %include "out/kernel_sectors.inc"
 %include "out/stack_size.inc"
 
-SMAP equ 0x0534D4150
-MAX_MEMORY_SECTIONS_COUNT equ 128
+SMAP 						equ 0x0534D4150
+MAX_MEMORY_SECTIONS_COUNT	equ 128
 
-KERNEL_LBA 				equ (STAGE2_SECTORS + 1)
-KERNEL_BUFFER_SEGMENT	equ 0x2000
-KERNEL_BUFFER_OFFSET 	equ 0x4000
-KERNEL_BUFFER_SECTORS 	equ 32
-KERNEL_ADDRESS 			equ 0x100000
+STAGE2_SECTORS 				equ (stage2_end - stage2) / 512
+KERNEL_LBA 					equ (STAGE2_SECTORS + 1)
+KERNEL_BUFFER_SEGMENT		equ 0x2000
+KERNEL_BUFFER_OFFSET 		equ 0x4000
+KERNEL_BUFFER_SECTORS 		equ 32
+KERNEL_ADDRESS 				equ 0x100000
 
 [bits 16]
 [org 0x20000]
@@ -450,5 +450,6 @@ stack:
 .bottom:
 
 section .text
-times STAGE2_SECTORS * 512 - ($ - $$) db 0
-kernel:
+times (512 - (($ - $$) % 512)) % 512 db 0 ; Padding to full sector.
+stage2_end:
+
