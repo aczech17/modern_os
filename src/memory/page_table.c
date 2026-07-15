@@ -1,6 +1,5 @@
 #include "page_table.h"
 #include "common.h"
-#include <byteswap.h>
 #include "../vga.h"
 #include "../common.h"
 
@@ -158,24 +157,6 @@ void identity_map_kernel(Page_table_tree* pt_tree, const Phys_memory_map* kernel
     for (u64 page_addr = frame_start_of_addr(0xB8000); page_addr < vga_end; page_addr += FRAME_SIZE)
     {
         identity_map_page(pt_tree, page_addr);
-    }
-}
-
-void identity_map_2mb(Page_table_tree* tree)
-{
-    // PML4[0] -> PDPT
-    tree->tables[0].entry[0] =
-        (u64)&tree->tables[1] | 0x3;
-
-    // PDPT[0] -> PD
-    tree->tables[1].entry[0] =
-        (u64)&tree->tables[2] | 0x3;
-
-    // PD -> 2 MiB pages
-    for (u64 i = 0; i < 512; ++i)
-    {
-        tree->tables[2].entry[i] =
-            (i * 0x200000) | 0x83;
     }
 }
 

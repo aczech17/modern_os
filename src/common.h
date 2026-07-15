@@ -16,7 +16,7 @@ typedef int64_t i64;
 size_t string_len(const char* text);
 void memory_copy(char* dst, const char* src, size_t count);
 void memory_set(u8* dst, char value, size_t count);
-void print(const char* format, ...);
+void vga_printf(const char* format, ...);
 void panic(const char* msg);
 
 #endif // COMMON_H

@@ -18,21 +18,21 @@
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
-    print("%s:\n", name);
+    vga_printf("%s:\n", name);
     u64 total_memory_available = 0;
     for (u32 i = 0; i < memory_regions->region_count; ++i)
     {
         total_memory_available += (memory_regions->end_addr[i] - memory_regions->start_addr[i] + 1);
-        print("start = %X, end = %X\n", memory_regions->start_addr[i], memory_regions->end_addr[i]);
+        vga_printf("start = %X, end = %X\n", memory_regions->start_addr[i], memory_regions->end_addr[i]);
     }
     u64 total_frames_available = total_memory_available / FRAME_SIZE;
-    print("%ZTotal memory in %s: %X\n", 0x0A, name, total_memory_available);
-    print("Total frames in %s: %X\n%z\n", name, total_frames_available);
+    vga_printf("%ZTotal memory in %s: %X\n", 0x0A, name, total_memory_available);
+    vga_printf("Total frames in %s: %X\n%z\n", name, total_frames_available);
 }
 
-static void print_free_frames(const Frame_allocator* frame_allocator)
+static u64 get_free_frames_count(const Frame_allocator *frame_allocator)
 {
-    u64 free_frames = 0;
+    u64 free_frames_count = 0;
     for (u64 block_index = 0; block_index < FRAME_BITMAP_SIZE; ++block_index)
     {
         u8 block = frame_allocator->frame_bitmap[block_index];
@@ -40,19 +40,19 @@ static void print_free_frames(const Frame_allocator* frame_allocator)
         for (u64 i = 0; i < 8; ++i)
         {
             if ((block & 1) == 0)
-                ++free_frames;
+                ++free_frames_count;
 
             block >>= 1;
         }
     }
 
-    print("%ZFree frames:%X\n%z", 0x0A, free_frames);
+    return free_frames_count;
 }
 
 void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_bottom, u64 stack_top)
 {
     clear_screen(0x07);
-    print("%ZSuper system!\n%z\n", 0x4E);
+    vga_printf("%ZSuper system!\n%z\n", 0x4E);
     
     Phys_memory_map phys_memory_regions;
 
@@ -65,13 +65,14 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     print_memory_map(&phys_memory_regions, "available");
     print_memory_map(&kernel_regions, "kernel");
 
-    print("stack_bottom = %X\n", stack_bottom);
-    print("stack top = %X\n\n", stack_top);
+    vga_printf("stack_bottom = %X\n", stack_bottom);
+    vga_printf("stack top = %X\n\n", stack_top);
 
     Frame_allocator frame_allocator;
     init_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
 
-    print_free_frames(&frame_allocator);
+    u64 free_frames_count = get_free_frames_count(&frame_allocator);
+    vga_printf("%Zfree frames count = %X\n%z", 0x0F, free_frames_count);
 
 
     /*
@@ -90,23 +91,24 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     */
 
 
+
+
     alignas (4096) Page_table_tree page_table_tree;
     zero_page_table_tree(&page_table_tree);
 
-    print("page table tree at %X, size = %X\n", &page_table_tree, sizeof(page_table_tree));
+    // print("page table tree at %X, size = %X\n", &page_table_tree, sizeof(page_table_tree));
     // identity_map_kernel(&page_table_tree, &kernel_regions);
 
-    identity_map_2mb(&page_table_tree);
-    
-    __asm__ volatile
-    (
-        "mov %0, %%cr3\n"
-        "mov %0, %%cr3" // Clear TLB.
-        :: "r"(&page_table_tree)
-        : "memory"
-    );
-    
-    print("Identity mapping set.");
+
+    // __asm__ volatile
+    // (
+    //     "mov %0, %%cr3\n"
+    //     "mov %0, %%cr3" // Clear TLB.
+    //     :: "r"(&page_table_tree)
+    //     : "memory"
+    // );
+    //
+
 
     for (;;);
 }

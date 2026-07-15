@@ -100,7 +100,7 @@ void write_hex(Vga_buffer* buffer, u64 number, bool digit_uppercase, bool strip)
     if (strip)
     {
         int i;
-        for (i = 0; digits[i] == '0'; ++i); // skip '0' digits
+        for (i = 0; digits[i] == '0'; ++i) {} // skip '0' digits
 
         write_string(buffer, &digits[i]);
         return;
