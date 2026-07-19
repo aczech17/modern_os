@@ -320,16 +320,23 @@ parse_kernel:
 
 
 set_up_stack:
+;   STACK BOTTOM
+;   <data>
+;   STACK TOP
+
 	mov rbp, STACK_TOP
 	mov rsp, rbp
 
 set_kernel_arguments:
-	; Calling convention:
-	; rdi, rsi, rdx, rcx, r8, r9
+;   RDI - memory map address            (u64)
+;   RSI - memory map count              (u32)
+;   RDX - program header address        (u64)
+;   RCX - program header entry count    (u16)
+;   R8  - stack bottom                  (u64)
+;   R9  - stack top                     (u64)
 
 	mov rdi, memory_sections.entries
-	mov rsi, 0
-	mov esi, dword [abs memory_sections.count]
+	movzx rsi, dword [abs memory_sections.count]
 
 	; Program header table
 	mov rdx, [abs KERNEL_BLOB_ADDRESS + 0x20]
