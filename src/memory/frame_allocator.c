@@ -13,13 +13,13 @@ void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available
     allocator->latest_allocated_block = 0;
 
     // Initially mark all frames as used.
-    memory_set(allocator->frame_bitmap, 0xFF, FRAME_BITMAP_SIZE);
+    memory_set(allocator->frame_bitmap, (char)0xFF, FRAME_BITMAP_SIZE);
     
     // Mark available memory regions as unused.
     for (u32 region = 0; region < available_regions->region_count; ++region)
     {
-        u64 region_start = available_regions->start_addr[region];
-        u64 region_end   = available_regions->end_addr[region];
+        Phys_addr region_start = available_regions->start_addr[region];
+        Phys_addr region_end   = available_regions->end_addr[region];
 
         u64 first_frame = region_start / FRAME_SIZE;
         u64 last_frame = region_end / FRAME_SIZE; // Round down
@@ -36,8 +36,9 @@ void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available
     // Mark kernel frames used.
     for (u32 region = 0; region < kernel_regions->region_count; ++region)
     {
-        u64 region_start = kernel_regions->start_addr[region];
-        u64 region_end   = kernel_regions->end_addr[region];
+        Phys_addr region_start = kernel_regions->start_addr[region];
+        Phys_addr region_end   = kernel_regions->end_addr[region];
+
         u64 first_frame = region_start / FRAME_SIZE;
         u64 last_frame = (region_end + FRAME_SIZE - 1) / FRAME_SIZE; // Round up.
 

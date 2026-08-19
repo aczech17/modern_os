@@ -114,8 +114,8 @@ static void identity_map_page(Page_table_tree* pt_tree, u64 page_addr)
             .user_accessible = 0,
             .write_through_caching = 0, // ???
             .cache_disable = 0,
-            .accessed = 1,
-            .dirty = 1, // ???
+            .accessed = 0,
+            .dirty = 0,
             .huge_page = 0,
             .global = 1,
             .available = 0,
@@ -142,8 +142,8 @@ void identity_map_kernel(Page_table_tree* pt_tree, const Phys_memory_map* kernel
 {
     for (u64 region = 0; region < kernel_regions->region_count; ++region)
     {
-        u64 region_start = kernel_regions->start_addr[region];
-        u64 region_end = kernel_regions->end_addr[region];
+        Phys_addr region_start = kernel_regions->start_addr[region];
+        Phys_addr region_end = kernel_regions->end_addr[region];
 
         for (u64 page_addr = frame_start_of_addr(region_start); page_addr < region_end; page_addr += FRAME_SIZE)
         {

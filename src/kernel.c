@@ -94,10 +94,10 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
 
 
     alignas (4096) Page_table_tree page_table_tree;
-    zero_page_table_tree(&page_table_tree);
+    // zero_page_table_tree(&page_table_tree);
 
-    // print("page table tree at %X, size = %X\n", &page_table_tree, sizeof(page_table_tree));
-    // identity_map_kernel(&page_table_tree, &kernel_regions);
+    vga_printf("page table tree at %X, size = %X\n", &page_table_tree, sizeof(page_table_tree));
+    identity_map_kernel(&page_table_tree, &kernel_regions);
 
 
     // __asm__ volatile
@@ -107,7 +107,7 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
     //     :: "r"(&page_table_tree)
     //     : "memory"
     // );
-    //
+
 
 
     for (;;);
