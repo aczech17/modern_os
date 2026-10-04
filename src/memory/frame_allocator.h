@@ -4,12 +4,6 @@
 #include "phys_memory_map.h"
 #include "common.h"
 
-/*
-    max RAM size = 32 GiB
-    frame size = 4 KiB
-    max frame count = 32 GiB / 4 KiB = 8 Mi frames
-    8 Mi frames -> 8 Mi bools -> 8 Mib = 1 MiB
-*/
 
 typedef struct
 {
