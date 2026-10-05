@@ -6,6 +6,7 @@
 #define MAX_MEMORY_SECTIONS 128
 
 typedef u64 Phys_addr;
+typedef u64 Virt_addr;
 
 typedef struct
 {

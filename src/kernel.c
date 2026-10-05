@@ -14,7 +14,6 @@
 #include "vga.h"
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
-#include "memory/page_table.h"
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
@@ -93,17 +92,11 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
 
 
 
-    alignas (4096) Page_table_tree page_table_tree;
-    zero_page_table_tree(&page_table_tree);
+    // alignas (4096) Page_table_tree page_table_tree;
+    // zero_page_table_tree(&page_table_tree);
 
-    vga_printf("page table tree at %X, size = %X\n", &page_table_tree, sizeof(page_table_tree));
-    identity_map_kernel(&page_table_tree, &kernel_regions);
+    // identity_map_kernel(&page_table_tree, &kernel_regions);
 
-
-    vga_printf("PD[0] = %X\n", page_table_tree.tables[2].entry[0]);
-    vga_printf("PD[1] = %X\n", page_table_tree.tables[2].entry[1]);
-    vga_printf("PD[7] = %X\n", page_table_tree.tables[2].entry[7]);
-    vga_printf("PD[8] = %X\n", page_table_tree.tables[2].entry[8]);
 
 
     // __asm__ volatile

@@ -53,12 +53,12 @@ static u64 value(const Page_table_entry* entry)
     return val;
 }
 
-static u64 frame_start_of_addr(u64 addr)
+static Phys_addr frame_start_of_addr(u64 addr)
 {
     return addr & ~(FRAME_SIZE - 1);
 }
 
-u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr)
+static Phys_addr get_pte_addr_from_page(const Page_table* pt_root, Virt_addr page_address)
 {
     // level 1 -> 0 -> 39
     // level 2 -> 1 -> 30
@@ -66,97 +66,61 @@ u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr)
     // level 4 -> 3 -> 12
     // page offset  -> 0
 
-    u64 table_addr;
-    for (u32 level = 0; level <= 3; ++level)
+    Page_table* pt = (Page_table*)pt_root;
+    Phys_addr phys_addr;
+    for (u32 level = 0; level <= 2; ++level)
     {
-        u32 shift = 39 - 9 * level;
-        u32 index = (virt_addr >> shift) & 0b111111111; // 9-bit index
-        u64 table_entry_value = tree->tables[level].entry[index];
+        u64 virt_addr_shift = 39 - 9 * level;
+        u64 index = (page_address >> virt_addr_shift) & 0b111111111; // 9-bit index
 
-        // Check if present.
-        if (!(table_entry_value & 1))
+        u64 pte_value = pt->entry[index];
+
+        if (!(pte_value & PTE_PRESENT))
             return INVALID_ADDR;
 
-        table_addr = table_entry_value & 0x000FFFFFFFFFF000;
+        phys_addr = pte_value & PTE_PHYSICAL_ADDRESS_MASK;
+        pt = (Page_table*) phys_addr;
     }
-    u64 page_addr = table_addr;
-    u64 page_offset = virt_addr & 0xFFF;
 
-    return page_addr | page_offset;
+    return phys_addr;
 }
 
-void zero_page_table_tree(Page_table_tree* tree)
+Phys_addr get_phys_addr(const Page_table* pt_root, Virt_addr virt_addr)
 {
-    for (u32 level = 0; level < 4; ++level)
-    {
-        for (u32 entry_num = 0; entry_num < 512; ++entry_num)
-        {
-            tree->tables[level].entry[entry_num] = 0;
-        }
-    }
+    Virt_addr page_address = virt_addr & ~(0xFFF);
+    Phys_addr pte_addr = get_pte_addr_from_page(pt_root, page_address);
+    u64 pte = *(u64*)pte_addr;
+
+    Phys_addr frame_address = pte & PTE_PHYSICAL_ADDRESS_MASK;
+    Phys_addr page_offset = virt_addr & 0xFFF;
+
+    return frame_address | page_offset;
 }
 
-static void identity_map_page(Page_table_tree* pt_tree, u64 page_addr)
+static void identity_map_page(Page_table* pt_tree, Virt_addr page_addr)
 {
-    for (u32 level = 0; level <= 3; ++level)
+    Page_table_entry entry =
     {
-        u32 shift = 39 - 9 * level;
-        u32 index = (page_addr >> shift) & 0b111111111; // 9-bit index
+        .present = 1,
+        .writable = 1,              // ???
+        .user_accessible = 0,
+        .write_through_caching = 0, // ???
+        .cache_disable = 0,
+        .accessed = 0,
+        .dirty = 0,
+        .huge_page = 0,
+        .global = 1,
+        .available = 0,
+        .phys_addr = page_addr,     // identity mapping
+        .no_execute = 0,            // ???
+    };
+    u64 pte_value = value(&entry);
 
-        u64* table_entry_value_addr = &pt_tree->tables[level].entry[index];
-        
-        /*
-            u8 present;
-            u8 writable;
-            u8 user_accessible;
-            u8 write_through_caching;
-            u8 cache_disable;
-            u8 accessed;
-            u8 dirty;
-            u8 huge_page;
-            u8 global;
-            u64 available;
-            u64 phys_addr;
-            u64 no_execute;
-        */
-
-        u64 phys_addr;
-        if (level < 3)
-        {
-            Page_table* next_level_table_addr = &pt_tree->tables[level + 1];
-            phys_addr = (u64)next_level_table_addr;
-
-            // Check if table address is page aligned.
-            if (phys_addr & 0xFFF)
-                panic("Table is not page aligned");
-        }
-        else
-        {
-            phys_addr = frame_start_of_addr(page_addr);
-            // print("mapping virt=%X phys=%X\n", page_addr, phys_addr);
-        }
-        
-        Page_table_entry entry =
-        {
-            .present = 1,
-            .writable = 1,              // ???
-            .user_accessible = 0,
-            .write_through_caching = 0, // ???
-            .cache_disable = 0,
-            .accessed = 0,
-            .dirty = 0,
-            .huge_page = 0,
-            .global = 1,
-            .available = 0,
-            .phys_addr = phys_addr,
-            .no_execute = 0,            // ???
-        };
-        
-        *table_entry_value_addr = value(&entry);
-    }
+    u64* pte_addr = (u64*)get_pte_addr_from_page((const Page_table*)pt_tree, page_addr);
+    *pte_addr = pte_value;
 }
 
-void identity_map_kernel(Page_table_tree* pt_tree, const Phys_memory_map* kernel_regions)
+void identity_map_kernel(Page_table* pt_tree, const Phys_memory_map* kernel_regions)
 {
     for (u64 region = 0; region < kernel_regions->region_count; ++region)
     {

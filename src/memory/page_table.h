@@ -16,7 +16,7 @@ typedef struct
     u8 huge_page;
     u8 global;
     u64 available;
-    u64 phys_addr;
+    Phys_addr phys_addr;
     u64 no_execute;
 }Page_table_entry;
 
@@ -25,14 +25,19 @@ typedef struct
     u64 entry[512];
 }Page_table;
 
-typedef struct
-{
-    Page_table tables[4];
-}Page_table_tree;
+#define PTE_PRESENT (1ULL << 0)
+#define PTE_WRITABLE (1ULL << 1)
+#define PTE_USER (1ULL << 2)
+#define PTE_WRITE_THROUGH (1ULL << 3)
+#define PTE_CACHE_DISABLE (1ULL << 4)
+#define PTE_ACCESSED (1ULL << 5)
+#define PTE_DIRTY (1ULL << 6)
+#define PTE_HUGE_PAGE (1ULL << 7)
+#define PTE_GLOBAL (1ULL << 8)
+#define PTE_NO_EXECUTE (1ULL << 63)
+#define PTE_PHYSICAL_ADDRESS_MASK 0x000FFFFFFFFFF000ULL
 
-void zero_page_table_tree(Page_table_tree* tree);
-void identity_map_kernel(Page_table_tree* tree, const Phys_memory_map* kernel_regions);
-u64 get_phys_addr(const Page_table_tree* tree, u64 virt_addr);
-void identity_map_2mb(Page_table_tree* tree);
+Phys_addr get_phys_addr(const Page_table* pt_root, Virt_addr virt_addr);
+void identity_map_kernel(Page_table* tree, const Phys_memory_map* kernel_regions);
 
 #endif // PAGE_TABLE_H
