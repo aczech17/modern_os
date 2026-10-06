@@ -14,10 +14,11 @@
 #include "vga.h"
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
+#include "memory/page_table.h"
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
-    vga_printf("%s:\n", name);
+    vga_printf("%Z%s%z:\n", 0x09 ,name);
     u64 total_memory_available = 0;
     for (u32 i = 0; i < memory_regions->region_count; ++i)
     {
@@ -48,21 +49,28 @@ static u64 get_free_frames_count(const Frame_allocator *frame_allocator)
     return free_frames_count;
 }
 
-void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 stack_bottom, u64 stack_top)
+void kernel_main
+(
+    u64 memory_map_addr,
+    u32 memory_map_entry_count,
+    u64 kernel_program_header_addr,
+    u16 kernel_program_header_entry_count,
+    u64 stack_bottom,
+    u64 stack_top
+)
 {
     clear_screen(0x07);
     vga_printf("%ZSuper system!\n%z\n", 0x4E);
     
     Phys_memory_map phys_memory_regions;
 
-    // Determine which physical addresses are available.
-    init_phys_memory_map(&phys_memory_regions, mmap_addr, mmap_count, 1 << 20);
+    determine_available_phys_addresses(&phys_memory_regions, memory_map_addr, memory_map_entry_count, 1 << 20);
 
     Phys_memory_map kernel_regions;
-    init_kernel_regions(&kernel_regions, ph_addr, ph_count, stack_bottom, stack_top);
+    init_kernel_regions(&kernel_regions, kernel_program_header_addr, kernel_program_header_entry_count, stack_bottom, stack_top);
 
-    print_memory_map(&phys_memory_regions, "available");
-    print_memory_map(&kernel_regions, "kernel");
+    print_memory_map(&phys_memory_regions, "total available");
+    print_memory_map(&kernel_regions, "taken by kernel");
 
     vga_printf("stack_bottom = %X\n", stack_bottom);
     vga_printf("stack top = %X\n\n", stack_top);
@@ -92,21 +100,52 @@ void kernel_main(u64 mmap_addr, u32 mmap_count, u64 ph_addr, u16 ph_count, u64 s
 
 
 
-    // alignas (4096) Page_table_tree page_table_tree;
-    // zero_page_table_tree(&page_table_tree);
+    alignas (4096) Page_table pt1;
+    Page_table pt2;
 
-    // identity_map_kernel(&page_table_tree, &kernel_regions);
+    Page_table_entry pt1_entry =
+    {
+        .present = 1,
+        .writable = 1,
+        .user_accessible = 0,
+        .write_through_caching = 0,
+        .cache_disable = 0,
+        .accessed = 0,
+        .dirty = 0,
+        .huge_page = 0,
+        .global = 0,
+        .available = 0,
+        .phys_addr = (Phys_addr)&pt2,
+        .no_execute = 0,
+    };
+    pt1.entry[0] = page_table_value(&pt1_entry);
+
+    Page_table_entry pt2_entry =
+    {
+        .present = 1,
+        .writable = 1,
+        .user_accessible = 0,
+        .write_through_caching = 0,
+        .cache_disable = 0,
+        .accessed = 0,
+        .dirty = 0,
+        .huge_page = 1,
+        .global = 0,
+        .available = 0,
+        .phys_addr = 0,
+        .no_execute = 0,
+    };
+    pt2.entry[0] = page_table_value(&pt2_entry);
+
+    __asm__ volatile
+    (
+        "mov %0, %%cr3\n"
+        :: "r"(&pt1)
+        : "memory"
+    );
 
 
-
-    // __asm__ volatile
-    // (
-    //     "mov %0, %%cr3\n"
-    //     :: "r"(&page_table_tree)
-    //     : "memory"
-    // );
-
-
+    vga_printf("\n%ZOK :)%z\n", 0x20);
 
     for (;;);
 }

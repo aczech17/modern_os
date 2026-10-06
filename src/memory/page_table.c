@@ -1,6 +1,5 @@
 #include "page_table.h"
 #include "common.h"
-#include "../vga.h"
 #include "../common.h"
 
 /*
@@ -33,7 +32,7 @@
     63	no execute	forbid executing code on this page (the NXE bit in the EFER register must be set)
 */
 
-static u64 value(const Page_table_entry* entry)
+u64 page_table_value(const Page_table_entry* entry)
 {
     u64 val =
         (entry->present << 0) |
@@ -53,91 +52,40 @@ static u64 value(const Page_table_entry* entry)
     return val;
 }
 
-static Phys_addr frame_start_of_addr(u64 addr)
-{
-    return addr & ~(FRAME_SIZE - 1);
-}
-
-static Phys_addr get_pte_addr_from_page(const Page_table* pt_root, Virt_addr page_address)
-{
-    // level 1 -> 0 -> 39
-    // level 2 -> 1 -> 30
-    // level 3 -> 2 -> 21
-    // level 4 -> 3 -> 12
-    // page offset  -> 0
-
-    Page_table* pt = (Page_table*)pt_root;
-    Phys_addr phys_addr;
-    for (u32 level = 0; level <= 2; ++level)
-    {
-        u64 virt_addr_shift = 39 - 9 * level;
-        u64 index = (page_address >> virt_addr_shift) & 0b111111111; // 9-bit index
-
-        u64 pte_value = pt->entry[index];
-
-        if (!(pte_value & PTE_PRESENT))
-            return INVALID_ADDR;
-
-        phys_addr = pte_value & PTE_PHYSICAL_ADDRESS_MASK;
-        pt = (Page_table*) phys_addr;
-    }
-
-    return phys_addr;
-}
-
 Phys_addr get_phys_addr(const Page_table* pt_root, Virt_addr virt_addr)
 {
-    Virt_addr page_address = virt_addr & ~(0xFFF);
-    Phys_addr pte_addr = get_pte_addr_from_page(pt_root, page_address);
-    u64 pte = *(u64*)pte_addr;
+    Page_table* pt = (Page_table*)pt_root;
+    Phys_addr phys_addr, frame_base, frame_offset;
 
-    Phys_addr frame_address = pte & PTE_PHYSICAL_ADDRESS_MASK;
-    Phys_addr page_offset = virt_addr & 0xFFF;
-
-    return frame_address | page_offset;
-}
-
-static void identity_map_page(Page_table* pt_tree, Virt_addr page_addr)
-{
-    Page_table_entry entry =
+    for (u32 level = 1; level <= 4; ++level)
     {
-        .present = 1,
-        .writable = 1,              // ???
-        .user_accessible = 0,
-        .write_through_caching = 0, // ???
-        .cache_disable = 0,
-        .accessed = 0,
-        .dirty = 0,
-        .huge_page = 0,
-        .global = 1,
-        .available = 0,
-        .phys_addr = page_addr,     // identity mapping
-        .no_execute = 0,            // ???
-    };
-    u64 pte_value = value(&entry);
+        u64 virt_addr_shift = 48 - 9 * level;
+        u64 index = (virt_addr >> virt_addr_shift) & 0b111111111;
 
-    u64* pte_addr = (u64*)get_pte_addr_from_page((const Page_table*)pt_tree, page_addr);
-    *pte_addr = pte_value;
-}
+        u64 entry_value = pt->entry[index];
 
-void identity_map_kernel(Page_table* pt_tree, const Phys_memory_map* kernel_regions)
-{
-    for (u64 region = 0; region < kernel_regions->region_count; ++region)
-    {
-        Phys_addr region_start = kernel_regions->start_addr[region];
-        Phys_addr region_end = kernel_regions->end_addr[region];
+        if (!(entry_value & PTE_PRESENT))
+            return INVALID_ADDR;
 
-        for (u64 page_addr = frame_start_of_addr(region_start); page_addr < region_end; page_addr += FRAME_SIZE)
+        phys_addr = entry_value & PTE_PHYSICAL_ADDRESS_MASK;
+
+        if ((level == 2 || level == 3) && (entry_value & PTE_HUGE_PAGE))
         {
-            identity_map_page(pt_tree, page_addr);
+            frame_base = phys_addr;
+
+            if (level == 2)
+                frame_offset = virt_addr & 0x3FFFFFFF;  // 30 lowest bits
+            else // level == 3
+                frame_offset = virt_addr & 0x1FFFFF;    // 21 lowest bits
+
+            return frame_base | frame_offset;
         }
+
+        pt = (Page_table*)phys_addr;
     }
 
-    // Identity map VGA buffer pages as well.
-    const u64 vga_start = 0xB8000;
-    const u64 vga_end = vga_start + VGA_SIZE - 1;
-    for (u64 page_addr = frame_start_of_addr(0xB8000); page_addr < vga_end; page_addr += FRAME_SIZE)
-    {
-        identity_map_page(pt_tree, page_addr);
-    }
+    frame_base = phys_addr;
+    frame_offset = virt_addr & 0xFFF;
+
+    return frame_base | frame_offset;
 }

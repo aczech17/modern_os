@@ -37,7 +37,7 @@ typedef struct
 #define PTE_NO_EXECUTE (1ULL << 63)
 #define PTE_PHYSICAL_ADDRESS_MASK 0x000FFFFFFFFFF000ULL
 
+u64 page_table_value(const Page_table_entry* entry);
 Phys_addr get_phys_addr(const Page_table* pt_root, Virt_addr virt_addr);
-void identity_map_kernel(Page_table* tree, const Phys_memory_map* kernel_regions);
 
 #endif // PAGE_TABLE_H
