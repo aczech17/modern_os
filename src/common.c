@@ -25,10 +25,6 @@ void memory_set(u8* dst, char value, size_t count)
 
 void vga_printf(const char* format, ...)
 {
-    // Define number variables here, because we cannot do it inside the switch instruction.
-    u64 number_u64;
-    i64 number_i64;
-
     const char gray_on_black = 0x07;
 
     static Vga_buffer vga =
@@ -58,29 +54,39 @@ void vga_printf(const char* format, ...)
         {
             case 'i':
             case 'd':
-                number_i64 = va_arg(args, i64);
-                write_dec_signed(&vga, number_i64);
+            {
+                i64 number = va_arg(args, i64);
+                write_dec_signed(&vga, number);
                 break;
+            }
                     
             case 'u':
-                number_u64 = va_arg(args, u64);
-                write_dec_unsigned(&vga, number_u64);
+            {
+                u64 number = va_arg(args, u64);
+                write_dec_unsigned(&vga, number);
                 break;
+            }
 
             case 'x':
-                number_u64 = va_arg(args, u64);
-                write_hex(&vga, number_u64, false, true);
+            {
+                u64 number = va_arg(args, u64);
+                write_hex(&vga, number, false, true);
                 break;
+            }
 
             case 'X':
-                number_u64 = va_arg(args, u64);
-                write_hex(&vga, number_u64, true, true);
+            {
+                u64 number = va_arg(args, u64);
+                write_hex(&vga, number, true, true);
                 break;
+            }
 
             case 's':
+            {
                 char* str = va_arg(args, char*);
                 write_string(&vga, str);
                 break;
+            }
 
             case 'c':
                 write_char(&vga, (char)va_arg(args, int));
