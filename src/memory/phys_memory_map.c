@@ -1,14 +1,14 @@
 #include "phys_memory_map.h"
 
-void init_phys_memory_map(Phys_memory_map* mmap, Phys_addr mmap_addr, u32 mmap_count, Phys_addr low_mem_size)
+void determine_available_phys_addresses(Phys_memory_map* mmap, Phys_addr bios_mmap_addr, u32 mmap_count, Phys_addr low_mem_size)
 {
     mmap->region_count = 0;
 
     for (u32 i = 0; i < mmap_count; ++i)
     {
-        Phys_addr base = *(u64*)(mmap_addr + i * 24);
-        Phys_addr size = *(u64*)(mmap_addr + i * 24 + 8);
-        u32 type = *(u32*)(mmap_addr + i * 24 + 16);
+        Phys_addr base = *(u64*)(bios_mmap_addr + i * 24);
+        Phys_addr size = *(u64*)(bios_mmap_addr + i * 24 + 8);
+        u32 type = *(u32*)(bios_mmap_addr + i * 24 + 16);
         Phys_addr end = base + size - 1;
 
         if (type != 1 || base < low_mem_size)

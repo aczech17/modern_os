@@ -15,7 +15,7 @@ typedef struct
     u64 region_count;
 }Phys_memory_map;
 
-void init_phys_memory_map(Phys_memory_map* mmap, Phys_addr mmap_addr, u32 mmap_count, Phys_addr low_mem_size);
+void determine_available_phys_addresses(Phys_memory_map* mmap, Phys_addr bios_mmap_addr, u32 mmap_count, Phys_addr low_mem_size);
 void init_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16 ph_count, Phys_addr stack_top, Phys_addr stack_bottom);
 
 #endif // PHYS_MEMORY_MAP_H
