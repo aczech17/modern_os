@@ -9,7 +9,7 @@ emulation_tools = ["qemu-system-x86_64"]
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
-                  'src/memory/page_table.c']
+                  'src/memory/page_table.c', 'src/interrupt.c']
 
 linker_script_template = 'linker_template.ld'
 mem_layout_path = 'out/mem_layout.inc'

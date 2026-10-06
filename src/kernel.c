@@ -15,6 +15,9 @@
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
 #include "memory/page_table.h"
+#include "interrupt.h"
+
+static Idt_entry idt[256];
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
@@ -97,9 +100,6 @@ void kernel_main
         u64 no_execute;
     */
 
-
-
-
     alignas (4096) Page_table pt1;
     Page_table pt2;
 
@@ -145,7 +145,41 @@ void kernel_main
     );
 
 
-    vga_printf("\n%ZOK :)%z\n", 0x20);
+    vga_printf("\n%ZPage tables OK :)%z\n", 0x20);
+
+    u64 handler = (u64)page_fault_handler;
+
+    idt[14].offset_low    = handler & 0xFFFF;
+    idt[14].offset_middle = (handler >> 16) & 0xFFFF;
+    idt[14].offset_high   = (handler >> 32) & 0xFFFFFFFF;
+
+    idt[14].segment_selector = 0x08;
+    idt[14].ist = 0;
+    idt[14].type_attrs = 0x8E;
+    idt[14].reserved = 0;
+
+    u8 idtr[10];
+
+    u16 limit = sizeof(idt) - 1;
+    u64 base = (u64)idt;
+
+    idtr[0] = limit;
+    idtr[1] = limit >> 8;
+
+    for (u8 i = 0; i < 8; ++i)
+        idtr[i + 2] = base >> (8 * i);
+
+    __asm__ volatile
+    (
+        "lidt %0"
+        :
+        : "m"(idtr)
+    );
+
+    vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
+
+    volatile u64* ptr = (u64*)0xDEADBEEF;
+    u64 value = *ptr;
 
     for (;;);
 }
