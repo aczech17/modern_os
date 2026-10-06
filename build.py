@@ -41,8 +41,6 @@ def prepare_linker_script():
     with open(linker_script_template, 'r') as f:
         linker_script_content = f.read()
 
-    linker_script_content = linker_script_content.replace("STACK_BOTTOM", f"0x{stack_bottom:X}")
-    linker_script_content = linker_script_content.replace("STACK_SIZE", f"0x{stack_size:X}")
     linker_script_content = linker_script_content.replace("TEXT_ADDR", f"0x{text_addr:X}")
 
     linker_script_path = 'out/linker.ld'
