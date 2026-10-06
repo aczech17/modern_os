@@ -12,7 +12,7 @@ static void write_char_vga(char c, size_t row, size_t col, char color)
 
 static void scroll_down(Vga_buffer* buffer)
 {
-    memory_copy(VGA_ADDRESS, VGA_ADDRESS + VGA_WIDTH * 2, (VGA_SIZE - VGA_WIDTH * 2));
+    memory_copy(VGA_ADDRESS, VGA_ADDRESS + VGA_WIDTH * 2, VGA_SIZE - VGA_WIDTH * 2);
 
     // Clear the bottom row.
     for (size_t col = 0; col < VGA_WIDTH; ++col)
@@ -116,7 +116,7 @@ void write_dec_unsigned(Vga_buffer* buffer, u64 number)
         write_char(buffer, '0');
     }
 
-    char digits[20] = {0}; // (2^64 - 1) has 19 digits.
+    char digits[21] = {0}; // (2^64 - 1) has 20 digits.
 
     int i = 0;
     while (number > 0)
@@ -144,7 +144,7 @@ void write_dec_unsigned(Vga_buffer* buffer, u64 number)
 
 void write_dec_signed(Vga_buffer* buffer, i64 number)
 {
-    // Min i64 is a separate case, because we can't get an absolute value of min i64.
+    // Min i64 is a special case of a negative number, because we can't get an absolute value of min i64.
     const i64 min_i64 = (i64)0xFFFFFFFFFFFFFFFF;
     if (number == min_i64)
     {
@@ -152,6 +152,11 @@ void write_dec_signed(Vga_buffer* buffer, i64 number)
         return;
     }
 
-    write_char(buffer, '-');
-    write_dec_unsigned(buffer, -number);
+    if (number < 0)
+    {
+        write_char(buffer, '-');
+        write_dec_unsigned(buffer, -number);
+    }
+    else
+        write_dec_unsigned(buffer, (u64)number);
 }
