@@ -12,9 +12,11 @@ KERNEL_BUFFER_SECTORS 		equ 64
 ; After include we've got:
 ;	KERNEL_BLOB_SIZE
 ;	KERNEL_BLOB_SECTORS
-;	STACK_BASE
-;   STACK_LIMIT
+;	STACK_BOTTOM
+;	STACK_SIZE
+;	STACK_TOP
 ;	KERNEL_TEXT_ADDR
+
 
 KERNEL_BLOB_ADDRESS equ (KERNEL_TEXT_ADDR + KERNEL_BLOB_SIZE)
 
@@ -320,7 +322,11 @@ parse_kernel:
 
 
 set_up_stack:
-    mov rbp, STACK_BASE
+;   STACK BOTTOM
+;   <data>
+;   STACK TOP
+
+	mov rbp, STACK_TOP
 	mov rsp, rbp
 
 set_kernel_arguments:
@@ -328,8 +334,8 @@ set_kernel_arguments:
 ;   RSI - memory map count              (u32)
 ;   RDX - program header address        (u64)
 ;   RCX - program header entry count    (u16)
-;   R8  - stack base                    (u64)
-;   R9  - stack limit                   (u64)
+;   R8  - stack bottom                  (u64)
+;   R9  - stack top                     (u64)
 
 	mov rdi, memory_sections.entries
 	movzx rsi, dword [abs memory_sections.count]
@@ -341,8 +347,8 @@ set_kernel_arguments:
 	; Program header entry count
 	movzx rcx, word [abs KERNEL_BLOB_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
 
-	mov r8, STACK_BASE
-	mov r9, STACK_LIMIT
+	mov r8, STACK_BOTTOM
+	mov r9, STACK_TOP
 	
 jump_to_kernel:
 	mov rax, [abs KERNEL_BLOB_ADDRESS + 0x18]		; e_entry -- entry point
