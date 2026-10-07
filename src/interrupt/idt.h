@@ -1,20 +1,22 @@
-#ifndef INTERRUPT_H
-#define INTERRUPT_H
+#ifndef INTERRUPT_IDT_H
+#define INTERRUPT_IDT_H
 
-#include "common.h"
+#include "../common.h"
 
 typedef struct
 {
     u16 offset_low;         // handler address (bits 0-15)
     u16 segment_selector;   // probably always 0x8
-    u8 ist;                 // interrupt stack options, probably always 0 for now
-    u8 type_attrs;          // 
+    u8 ist;                 // interrupt stack options, probably 0 for now
+
+    u8 type_attrs;
+    // 7 - present; 6,5 - requested privilege level; 4 - unused; 3-0 - type (1110 for 64-bit interrupt gate)
+
     u16 offset_middle;      // handler address (bits 16-31)
     u32 offset_high;        // handler address (bits 32-63)
     u32 reserved;           // must be 0
 }Idt_entry;
 
-void page_fault_stub();
-void page_fault_handler(u64 error_code);
 
-#endif // INTERRUPT_H
+
+#endif // INTERRUPT_IDT_H

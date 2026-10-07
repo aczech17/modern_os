@@ -1,16 +1,21 @@
 import os
 import subprocess
-import sys
 import shutil
+import sys
 import time
 
 build_tools = ["nasm", "gcc"]
 emulation_tools = ["qemu-system-x86_64"]
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
-kernel_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
-                  'src/memory/page_table.c', 'src/interrupt.c']
-kernel_asm_sources = ['src/interrupt_stubs.asm']
+
+kernel_asm_sources_and_outputs = [
+    ('src/interrupt/stubs.asm', 'out/interrupt.o')
+]
+
+kernel_c_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
+                  'src/memory/page_table.c',
+                  'src/interrupt/handlers.c']
 
 linker_script_template = 'linker_template.ld'
 mem_layout_path = 'out/mem_layout.inc'
@@ -52,11 +57,19 @@ def prepare_linker_script():
     return linker_script_path
 
 
+def assemble_kernel_asm(sources_and_outputs):
+    for source, output in sources_and_outputs:
+        try:
+            subprocess.run(['nasm', '-f', 'elf64', source, '-o', output], check=True)
+        except subprocess.CalledProcessError:
+            print(f"\033[31mError assembling kernel source {source}.\033[0m") # Red color
+            sys.exit(1)
 
-
-def compile_kernel(source_files, asm_objects, output, linker_script_path):
-    # print(f"Compiling {', '.join(source_files)} with linker script {linker_script_path} to {output}.")
-
+def compile_kernel(
+        c_source_files,
+        asm_objects, output,
+        linker_script_path
+):
     compile_command = """
     gcc
     -ffreestanding
@@ -70,13 +83,13 @@ def compile_kernel(source_files, asm_objects, output, linker_script_path):
     -Wall
     -Wextra
     -s
-    {sources}
+    {c_source_files}
     {asm_objects}
     -T {linker_script_path}
     -Wl,-e,kernel_main
     -o {output}
 """.format(
-        sources=" ".join(source_files),
+        c_source_files=" ".join(c_source_files),
         asm_objects=" ".join(asm_objects),
         linker_script_path=linker_script_path,
         output=output
@@ -118,13 +131,7 @@ def assemble_bootloader_stage(source, output):
         print(f"\033[31mError assembling {source}.\033[0m") # Red color
         sys.exit(1)
 
-def assemble_kernel_asm(source, output):
-    print(f"Assembling {source}.")
-    try:
-        subprocess.run(['nasm', '-f', 'elf64', source, '-o', output], check=True)
-    except subprocess.CalledProcessError:
-        print(f"\033[31mError assembling kernel source {source}.\033[0m") # Red color
-        sys.exit(1)
+
 
 def write_stage2_sectors_count(stage2_path):
     stage2_size = os.path.getsize(stage2_path)
@@ -190,19 +197,21 @@ def main():
         clean_all()
         return
 
-    if check_tools(build_tools) == False:
+    if not check_tools(build_tools):
         return
     
     os.makedirs('out', exist_ok=True)
     linker_script_path = prepare_linker_script()
 
-    assemble_kernel_asm(kernel_asm_sources[0], 'out/interrupt.o')
-    compile_kernel(kernel_sources, ['out/interrupt.o'] , 'out/kernel.elf', linker_script_path)
+    assemble_kernel_asm(kernel_asm_sources_and_outputs)
+    asm_objects = [path[1] for path in kernel_asm_sources_and_outputs]
+
+    compile_kernel(kernel_c_sources, asm_objects , 'out/kernel.elf', linker_script_path)
+
     write_kernel_layout('out/kernel.elf')
 
     assemble_bootloader_stage(bootloader_sources[1], 'out/bootloader_stage2.bin')
     write_stage2_sectors_count('out/bootloader_stage2.bin')
-
 
     assemble_bootloader_stage(bootloader_sources[0], 'out/bootloader_stage1.bin')
     
@@ -211,7 +220,7 @@ def main():
     print('\033[32mDone\033[0m\n') # green
 
     if len(sys.argv) > 1:
-        if check_tools(emulation_tools) == False:
+        if not check_tools(emulation_tools):
             return
 
         if sys.argv[1] == "run":

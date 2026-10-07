@@ -15,7 +15,8 @@
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
 #include "memory/page_table.h"
-#include "interrupt.h"
+#include "interrupt/idt.h"
+#include "interrupt/handlers.h"
 
 static Idt_entry idt[256];
 
