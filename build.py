@@ -20,10 +20,10 @@ kernel_c_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phy
 linker_script_template = 'linker_template.ld'
 mem_layout_path = 'out/mem_layout.inc'
 
-stack_bottom = 1 << 20
+stack_limit = 1 << 20
 stack_size = 1 << 24
-stack_top = stack_bottom + stack_size
-text_addr = stack_top
+stack_base = stack_limit + stack_size
+text_addr = stack_base
 
 def check_tools(needed_tools):
     missing_tools = []
@@ -117,9 +117,8 @@ def write_kernel_layout(kernel_path):
     with open(mem_layout_path, 'w') as f:
         f.write(f"KERNEL_BLOB_SIZE equ {kernel_size}\n")
         f.write(f"KERNEL_BLOB_SECTORS equ {kernel_sectors}\n")
-        f.write(f"STACK_BOTTOM equ {stack_bottom}\n")        
-        f.write(f"STACK_SIZE equ {stack_size}\n")
-        f.write(f"STACK_TOP equ {stack_top}\n")
+        f.write(f"STACK_BASE equ {stack_base}\n")
+        f.write(f"STACK_LIMIT equ {stack_limit}\n")
         f.write(f"KERNEL_TEXT_ADDR equ {text_addr}\n")
 
 

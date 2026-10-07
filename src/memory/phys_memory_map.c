@@ -21,7 +21,7 @@ void determine_available_phys_addresses(Phys_memory_map* mmap, Phys_addr bios_mm
 }
 
 void init_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16 ph_count,
-    Phys_addr stack_bottom, Phys_addr stack_top)
+    Phys_addr stack_base, Phys_addr stack_limit)
 {
     kernel_regions->region_count = 0;
     for (u16 i = 0; i < ph_count; ++i)
@@ -35,7 +35,7 @@ void init_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16
         ++kernel_regions->region_count;
     }
 
-    kernel_regions->start_addr[kernel_regions->region_count] = stack_bottom;
-    kernel_regions->end_addr[kernel_regions->region_count] = stack_top;
+    kernel_regions->start_addr[kernel_regions->region_count] = stack_limit;
+    kernel_regions->end_addr[kernel_regions->region_count] = stack_base;
     ++kernel_regions->region_count;
 }

@@ -59,8 +59,8 @@ void kernel_main
     u32 memory_map_entry_count,
     u64 kernel_program_header_addr,
     u16 kernel_program_header_entry_count,
-    u64 stack_bottom,
-    u64 stack_top
+    u64 stack_base,
+    u64 stack_limit
 )
 {
     clear_screen(0x07);
@@ -71,13 +71,13 @@ void kernel_main
     determine_available_phys_addresses(&phys_memory_regions, memory_map_addr, memory_map_entry_count, 1 << 20);
 
     Phys_memory_map kernel_regions;
-    init_kernel_regions(&kernel_regions, kernel_program_header_addr, kernel_program_header_entry_count, stack_bottom, stack_top);
+    init_kernel_regions(&kernel_regions, kernel_program_header_addr, kernel_program_header_entry_count, stack_base, stack_limit);
 
     print_memory_map(&phys_memory_regions, "total available");
     print_memory_map(&kernel_regions, "taken by kernel");
 
-    vga_printf("stack_bottom = %X\n", stack_bottom);
-    vga_printf("stack top = %X\n\n", stack_top);
+    vga_printf("stack base = %X\n", stack_base);
+    vga_printf("stack limit = %X\n\n", stack_limit);
 
     Frame_allocator frame_allocator;
     init_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
