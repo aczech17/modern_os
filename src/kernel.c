@@ -100,8 +100,12 @@ void kernel_main
         u64 no_execute;
     */
 
-    alignas (4096) Page_table pt1;
+    alignas (4096)
+    Page_table pt1;
     Page_table pt2;
+
+    for (i32 i = 1; i < 512; ++i)
+        pt1.entry[i] = pt2.entry[i] = 0;
 
     Page_table_entry pt1_entry =
     {
@@ -155,7 +159,21 @@ void kernel_main
 
     idt[14].segment_selector = 0x08;
     idt[14].ist = 0;
+
+
+    /*
+    IDT attributes:
+    bit:   7   6 5   4 3 2 1 0
+           ─   ─ ─     ─ ─ ─ ─
+           P   DPL      TYPE
+        Present = 1
+        DPL     = 00
+        TYPE    = 1110 (64-bit interrupt gate)
+
+        0b10001110 = 0x8E
+     */
     idt[14].type_attrs = 0x8E;
+
     idt[14].reserved = 0;
 
     u8 idtr[10];
@@ -178,8 +196,8 @@ void kernel_main
 
     vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
 
-    volatile u64* ptr = (u64*)0xDEADBEEF;
-    u64 value = *ptr;
+    volatile u8* ptr = (u8*)0x3FFFFFFF;
+    u8 value = *ptr;
 
     for (;;);
 }
