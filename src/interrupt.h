@@ -14,7 +14,7 @@ typedef struct
     u32 reserved;           // must be 0
 }Idt_entry;
 
-// Interrupt handlers require some assembly stubs.
-void page_fault_handler(void);
+void page_fault_stub();
+void page_fault_handler(u64 error_code);
 
 #endif // INTERRUPT_H

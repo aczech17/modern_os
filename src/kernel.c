@@ -151,7 +151,7 @@ void kernel_main
 
     vga_printf("\n%ZPage tables OK :)%z\n", 0x20);
 
-    u64 handler = (u64)page_fault_handler;
+    u64 handler = (u64)page_fault_stub;
 
     idt[14].offset_low    = handler & 0xFFFF;
     idt[14].offset_middle = (handler >> 16) & 0xFFFF;
@@ -197,7 +197,8 @@ void kernel_main
     vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
 
     volatile u8* ptr = (u8*)0x3FFFFFFF;
-    u8 value = *ptr;
+    u8 value = *(ptr + 1);
+    vga_printf("%d\n", value);
 
     for (;;);
 }
