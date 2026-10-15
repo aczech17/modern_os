@@ -67,8 +67,9 @@ def assemble_kernel_asm(sources_and_outputs):
 
 def compile_kernel(
         c_source_files,
-        asm_objects, output,
-        linker_script_path
+        asm_objects,
+        linker_script_path,
+        output,
 ):
     compile_command = """
     gcc
@@ -205,7 +206,7 @@ def main():
     assemble_kernel_asm(kernel_asm_sources_and_outputs)
     asm_objects = [path[1] for path in kernel_asm_sources_and_outputs]
 
-    compile_kernel(kernel_c_sources, asm_objects , 'out/kernel.elf', linker_script_path)
+    compile_kernel(kernel_c_sources, asm_objects , linker_script_path, 'out/kernel.elf')
 
     write_kernel_layout('out/kernel.elf')
 
