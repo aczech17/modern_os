@@ -87,7 +87,6 @@ def compile_kernel(
     {c_source_files}
     {asm_objects}
     -T {linker_script_path}
-    -Wl,-e,kernel_main
     -o {output}
 """.format(
         c_source_files=" ".join(c_source_files),
