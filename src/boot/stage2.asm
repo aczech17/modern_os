@@ -39,6 +39,7 @@ enable_a20:
 
 	in al, 0x92
 	or al, 2
+	and al, 0xFE ; Disable quick reset option.
 	out 0x92, al
 
 
