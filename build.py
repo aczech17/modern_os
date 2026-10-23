@@ -43,7 +43,6 @@ def check_tools(needed_tools):
 
 
 def prepare_linker_script():
-    print("Preparing linker script...")
     with open(linker_script_template, 'r') as f:
         linker_script_content = f.read()
 
@@ -57,13 +56,12 @@ def prepare_linker_script():
     return linker_script_path
 
 
-def assemble_kernel_asm(sources_and_outputs):
-    for source, output in sources_and_outputs:
-        try:
-            subprocess.run(['nasm', '-f', 'elf64', source, '-o', output], check=True)
-        except subprocess.CalledProcessError:
-            print(f"\033[31mError assembling kernel source {source}.\033[0m") # Red color
-            sys.exit(1)
+def assemble_kernel_asm(source, output):
+    try:
+        subprocess.run(['nasm', '-f', 'elf64', source, '-o', output], check=True)
+    except subprocess.CalledProcessError:
+        print(f"\033[31mError assembling kernel source {source}.\033[0m") # Red color
+        sys.exit(1)
 
 def compile_kernel(
         c_source_files,
@@ -123,14 +121,11 @@ def write_kernel_layout(kernel_path):
 
 
 def assemble_bootloader_stage(source, output):
-    print(f"Assembling {source}.")
     try:
         subprocess.run(['nasm', '-f', 'bin', source, '-o', output], check=True)
     except subprocess.CalledProcessError:
         print(f"\033[31mError assembling {source}.\033[0m") # Red color
         sys.exit(1)
-
-
 
 def write_stage2_sectors_count(stage2_path):
     stage2_size = os.path.getsize(stage2_path)
@@ -141,7 +136,6 @@ def write_stage2_sectors_count(stage2_path):
 
 
 def create_disk_image():
-    print("Joining the OS files...")
     with open("out/os.img", "wb") as img_file:
         for filename in ["out/bootloader_stage1.bin", "out/bootloader_stage2.bin", "out/kernel.elf"]:
             with open(filename, "rb") as f:
@@ -161,7 +155,6 @@ def qemu_run(memory_size):
         qemu_process.terminate()
         print("\033[33m\nSimulation terminated.\033[0m") # yellow
         sys.exit(0)
-
 
 def qemu_debug(debug_command, delay):
     qemu = subprocess.Popen(
@@ -185,6 +178,42 @@ def qemu_debug(debug_command, delay):
 def clean_all():
     shutil.rmtree('out', ignore_errors=True)
 
+def build():
+    print("Compiling to out directory.")
+    os.makedirs('out', exist_ok=True)
+
+    print("Preparing linker script... ", end="")
+    linker_script_path = prepare_linker_script()
+    print(f"Written to {linker_script_path}")
+
+    for (src, output) in kernel_asm_sources_and_outputs:
+        print(f"Assembling {src}... ", end="")
+        assemble_kernel_asm(src, output)
+        print(f"Assembled {output}")
+
+    asm_objects = [path[1] for path in kernel_asm_sources_and_outputs]
+
+    print("Compiling kernel... ", end="")
+    compile_kernel(kernel_c_sources, asm_objects , linker_script_path, 'out/kernel.elf')
+    print("Compiled to out/kernel.elf")
+
+    write_kernel_layout('out/kernel.elf')
+
+    print("Assembling bootloader stage 2... ", end="")
+    assemble_bootloader_stage(bootloader_sources[1], 'out/bootloader_stage2.bin')
+    print("Done")
+
+    write_stage2_sectors_count('out/bootloader_stage2.bin')
+
+    print("Assembling bootloader stage 1... ", end="")
+    assemble_bootloader_stage(bootloader_sources[0], 'out/bootloader_stage1.bin')
+    print("Done")
+
+    print("Joining OS files to out/os.img...")
+    create_disk_image()
+
+    print('\n\033[32mAll done\033[0m\n') # green
+
 
 def main():
     if sys.platform != 'linux':
@@ -198,25 +227,8 @@ def main():
 
     if not check_tools(build_tools):
         return
-    
-    os.makedirs('out', exist_ok=True)
-    linker_script_path = prepare_linker_script()
 
-    assemble_kernel_asm(kernel_asm_sources_and_outputs)
-    asm_objects = [path[1] for path in kernel_asm_sources_and_outputs]
-
-    compile_kernel(kernel_c_sources, asm_objects , linker_script_path, 'out/kernel.elf')
-
-    write_kernel_layout('out/kernel.elf')
-
-    assemble_bootloader_stage(bootloader_sources[1], 'out/bootloader_stage2.bin')
-    write_stage2_sectors_count('out/bootloader_stage2.bin')
-
-    assemble_bootloader_stage(bootloader_sources[0], 'out/bootloader_stage1.bin')
-    
-    create_disk_image()
-
-    print('\033[32mDone\033[0m\n') # green
+    build()
 
     if len(sys.argv) > 1:
         if not check_tools(emulation_tools):
@@ -229,6 +241,7 @@ def main():
             debug_command = sys.argv[2] if len(sys.argv) > 2 else 'info registers'
             delay = int(sys.argv[3]) if len(sys.argv) > 3 else 2
             qemu_debug(debug_command, delay)
+
 
 if __name__ == '__main__':
     main()
