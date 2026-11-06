@@ -1,7 +1,7 @@
 import argparse
 import os
-import subprocess
 import shutil
+import subprocess
 import sys
 import time
 
@@ -89,7 +89,7 @@ def prepare_linker_script():
 
     with open(linker_script_path, 'w') as f:
         f.write(linker_script_content)
-    
+
     return linker_script_path
 
 
@@ -143,7 +143,7 @@ def compile_kernel(
     if padding:
         with open(output, "ab") as f:
             f.write(b"\0" * padding)
-    
+
 
 def write_kernel_layout(kernel_path):
     kernel_size = os.path.getsize(kernel_path)
@@ -332,4 +332,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
