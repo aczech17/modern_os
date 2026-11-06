@@ -2,3 +2,4 @@ out
 .vscode
 .idea
 cmake-build-debug
+.zed
