@@ -1,0 +1,142 @@
+[
+  {
+    "file": "src/kernel.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/kernel.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/vga.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/vga.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/common.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/common.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/memory/phys_memory_map.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/memory/phys_memory_map.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/memory/frame_allocator.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/memory/frame_allocator.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/memory/page_table.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/memory/page_table.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/interrupt/handlers.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/interrupt/handlers.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
+  }
+]

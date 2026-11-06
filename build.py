@@ -108,6 +108,7 @@ def compile_kernel(
 ):
     compile_command = """
     gcc
+    -std=c11
     -ffreestanding
     -fno-pie
     -fno-pic
@@ -179,6 +180,9 @@ def create_disk_image():
                 img_file.write(f.read())
 
 def qemu_run(memory_size):
+    if memory_size.endswith("B"):
+        memory_size = memory_size[:-1]
+
     suffixes = {
         "K": ("K", "Ki"),
         "M": ("M", "Mi"),

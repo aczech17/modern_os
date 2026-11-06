@@ -11,6 +11,7 @@
     0x7	Light Gray	0xf	White
 */
 
+#include <stdalign.h>
 #include "vga.h"
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
