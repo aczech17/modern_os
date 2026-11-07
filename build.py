@@ -180,34 +180,36 @@ def create_disk_image():
                 img_file.write(f.read())
 
 def qemu_run(memory_size):
-    if memory_size.endswith("B"):
+    memory_size = memory_size.strip()
+    if memory_size.endswith(("KiB", "MiB", "GiB")):
+        memory_size = memory_size[:-2]
+    elif memory_size.endswith("B"):
+        memory_size = memory_size[:-1]
+    elif memory_size.endswith(("Ki", "Mi", "Gi")):
         memory_size = memory_size[:-1]
 
-    suffixes = {
-        "K": ("K", "Ki"),
-        "M": ("M", "Mi"),
-        "G": ("G", "Gi"),
-        "Ki": ("K", "Ki"),
-        "Mi": ("M", "Mi"),
-        "Gi": ("G", "Gi"),
-    }
+    input_suffix = memory_size.lstrip("0123456789").lstrip()
+    if input_suffix:
+        number = memory_size[:-len(input_suffix)].strip()
+    else:
+        number = memory_size.strip()
 
-    suffix = next(
-        (s for s in ("Ki", "Mi", "Gi", "K", "M", "G")
-         if memory_size.endswith(s)),
-        None
-    )
-
-    if suffix is None or not memory_size[:-len(suffix)].isdigit():
-        print_yellow("Invalid memory size. Use values like '512Mi', '4Gi', '4G', etc.")
+    if not number.isascii() or not number.isdigit():
+        print_red("Invalid memory size.")
         return
 
-    number = memory_size[:-len(suffix)]
-    qemu_suffix, binary_suffix = suffixes[suffix]
+    if input_suffix:
+        if input_suffix in {"K", "M", "G"}:
+            si_suffix = input_suffix
+        else:   # invalid suffix
+            print_red("Invalid memory size.")
+            return
+    else:
+        si_suffix = "M" # QEMU interprets no sufix as M, i.e. 4096 -> 4096 MiB
 
-    qemu_memory_size = number + qemu_suffix
+    print(f"Running QEMU with {number}{si_suffix}iB of memory.")
 
-    print(f"Running with {number} {binary_suffix}B of RAM...")
+    qemu_memory_size = f"{number}{si_suffix}"
 
     qemu_process = None
     try:
