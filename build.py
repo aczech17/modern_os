@@ -1,6 +1,7 @@
 import argparse
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -194,17 +195,55 @@ def compile_kernel(
             f.write(b"\0" * padding)
 
 
+def determine_kernel_memory_size(kernel_path):
+    with open(kernel_path, "rb") as f:
+        elf = f.read()
+
+    if elf[:4] != b"\x7fELF" or elf[4] != 2 or elf[5] != 1:
+        raise ValueError("Invalid ELF64 little-endian file.")
+
+    ph_offset = struct.unpack_from("<Q", elf, 0x20)[0]
+    ph_entry_size = struct.unpack_from("<H", elf, 0x36)[0]
+    ph_count = struct.unpack_from("<H", elf, 0x38)[0]
+
+    kernel_end = text_addr
+
+    for i in range(ph_count):
+        offset = ph_offset + i * ph_entry_size
+
+        if offset + 56 > len(elf) or ph_entry_size < 56:
+            raise ValueError("Invalid ELF program header.")
+
+        ph_type, _, _, p_vaddr, _, _, p_memsz, _ = struct.unpack_from(
+            "<IIQQQQQQ", elf, offset
+        )
+
+        if ph_type != 1 or p_memsz == 0:  # PT_LOAD
+            continue
+
+        segment_end = p_vaddr + p_memsz
+
+        if segment_end > kernel_end:
+            kernel_end = segment_end
+
+    # Round up to 4096-byte boundary.
+    kernel_end = (kernel_end + 4095) & ~4095
+
+    return kernel_end - text_addr
+
+
 def write_kernel_layout(kernel_path):
     kernel_size = os.path.getsize(kernel_path)
     kernel_sectors = (kernel_size + 511) // 512
 
+    kernel_memory_size = determine_kernel_memory_size(kernel_path)
+
     with open(mem_layout_path, 'w') as f:
-        f.write(f"KERNEL_BLOB_SIZE equ {kernel_size}\n")
         f.write(f"KERNEL_BLOB_SECTORS equ {kernel_sectors}\n")
         f.write(f"STACK_BASE equ {stack_base}\n")
         f.write(f"STACK_LIMIT equ {stack_limit}\n")
         f.write(f"KERNEL_TEXT_ADDR equ {text_addr}\n")
-
+        f.write(f"KERNEL_MEMORY_SIZE equ {kernel_memory_size}\n")
 
 def assemble_bootloader_stage(source, output):
     try:
