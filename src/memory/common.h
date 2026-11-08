@@ -3,6 +3,11 @@
 
 #define FRAME_SIZE (1 << 12)        // 4 KiB
 #define FRAME_BITMAP_SIZE (1 << 20) // 1 MiB
+
+typedef u64 Phys_addr;
+typedef u64 Virt_addr;
+typedef Phys_addr Frame_address;
+
 /*
     max RAM size = 32 GiB
     frame size = 4 KiB

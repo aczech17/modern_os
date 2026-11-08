@@ -2,11 +2,9 @@
 #define PHYS_MEMORY_MAP_H
 
 #include "../common.h"
+#include "common.h"
 
 #define MAX_MEMORY_SECTIONS 128
-
-typedef u64 Phys_addr;
-typedef u64 Virt_addr;
 
 typedef struct
 {
