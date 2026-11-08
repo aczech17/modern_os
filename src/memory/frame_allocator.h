@@ -14,7 +14,7 @@ typedef struct
 }Frame_allocator;
 
 void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions);
-u32 allocate_frame(Frame_allocator* allocator);
-void deallocate_frame(Frame_allocator* allocator, u32 frame_number);
+Frame_address allocate_frame(Frame_allocator* allocator);
+void deallocate_frame(Frame_allocator* allocator, Frame_address frame_address);
 
 #endif // MEM_ALLOCATOR_H

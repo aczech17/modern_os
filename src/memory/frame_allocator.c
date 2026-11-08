@@ -21,8 +21,8 @@ void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available
         Phys_addr region_start = available_regions->start_addr[region];
         Phys_addr region_end   = available_regions->end_addr[region];
 
-        u64 first_frame = region_start / FRAME_SIZE;
-        u64 last_frame = region_end / FRAME_SIZE; // Round down
+        u64 first_frame = (region_start + FRAME_SIZE - 1) / FRAME_SIZE; // Round up
+        u64 last_frame = (region_end - FRAME_SIZE + 1) / FRAME_SIZE; // Round down
 
         for (u64 frame_number = first_frame; frame_number <= last_frame; ++frame_number)
         {
@@ -33,14 +33,14 @@ void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available
         }
     }
 
-    // Mark kernel frames used.
+    // Mark kernel frames as used.
     for (u32 region = 0; region < kernel_regions->region_count; ++region)
     {
         Phys_addr region_start = kernel_regions->start_addr[region];
         Phys_addr region_end   = kernel_regions->end_addr[region];
 
         u64 first_frame = region_start / FRAME_SIZE;
-        u64 last_frame = (region_end + FRAME_SIZE - 1) / FRAME_SIZE; // Round up.
+        u64 last_frame = region_end / FRAME_SIZE;
 
         // It's not so efficient.
         for (u64 frame_number = first_frame; frame_number <= last_frame; ++frame_number)
@@ -53,14 +53,17 @@ void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available
     }
 }
 
-u32 allocate_frame(Frame_allocator* allocator)
+Frame_address allocate_frame(Frame_allocator* allocator)
 {
-    u32 block_index = allocator->latest_allocated_block;
+    /*
+        1B = 8b ==> frame block = 8 frames
+    */
+    u64 block_index = allocator->latest_allocated_block;
 
     for (u32 attempt = 0; attempt < FRAME_BITMAP_SIZE; ++attempt)
     {
-        u8* frame_block = &allocator->frame_bitmap[block_index];
-        if (*frame_block == 0xFF) // If the block is full, switch to the next block and try again.
+        u8* frame_block_bitmap = &allocator->frame_bitmap[block_index];
+        if (*frame_block_bitmap == 0xFF) // If the block is full, switch to the next block and try again.
         {
             block_index = (block_index + 1) % FRAME_BITMAP_SIZE;
             continue;
@@ -73,11 +76,13 @@ u32 allocate_frame(Frame_allocator* allocator)
         for (u32 i = 0; i < 8; ++i)
         {
             u8 mask = 0x80 >> i;
-            if ((*frame_block & mask) == 0)
+            if ((*frame_block_bitmap & mask) == 0)
             {
-                *frame_block |= mask;   // mark as used
-                u32 frame_number = 8 * block_index + i;
-                return frame_number;
+                *frame_block_bitmap |= mask;   // mark as used
+                u64 frame_number = 8 * block_index + i;
+
+                Frame_address frame_address = frame_number * FRAME_SIZE;
+                return frame_address;
             }
         }
 
@@ -87,9 +92,10 @@ u32 allocate_frame(Frame_allocator* allocator)
     return INVALID_ADDR;
 }
 
-void deallocate_frame(Frame_allocator* allocator, u32 frame_number)
+void deallocate_frame(Frame_allocator* allocator, Frame_address frame_address)
 {
-    u32 frame_block = frame_number / 8;
-    u32 frame_in_block = frame_number % 8;
+    u64 frame_number = frame_address / FRAME_SIZE;
+    u64 frame_block = frame_number / 8;
+    u64 frame_in_block = frame_number % 8;
     allocator->frame_bitmap[frame_block] &= ~(1 << (7 - frame_in_block));
 }
