@@ -196,11 +196,34 @@ void kernel_main
         : "m"(idtr)
     );
 
-    vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
+    // vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
+    //
+    // volatile u8* ptr = (u8*)0x3FFFFFFF;
+    // u8 value = *(ptr + 0);
+    // vga_printf("%d\n", value);
 
-    volatile u8* ptr = (u8*)0x3FFFFFFF;
-    u8 value = *(ptr + 1);
-    vga_printf("%d\n", value);
+
+    Frame_address allocated_frames[5];
+
+    for (int i = 0; i < 5; ++i)
+    {
+        Frame_address addr = allocate_frame(&frame_allocator);
+        allocated_frames[i] = addr;
+
+        vga_printf("%X\n", addr);
+    }
+
+    for (int i = 0; i < 5; ++i)
+    {
+        deallocate_frame(&frame_allocator, allocated_frames[i]);
+    }
+
+    vga_printf("\n");
+    for (int i = 0; i < 5; ++i)
+    {
+        Frame_address addr = allocate_frame(&frame_allocator);
+        vga_printf("%X\n", addr);
+    }
 
     for (;;);
 }
