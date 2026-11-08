@@ -12,12 +12,11 @@
 */
 
 #include <stdalign.h>
-#include "vga.h"
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
 #include "memory/page_table.h"
 #include "interrupt/idt.h"
-#include "interrupt/handlers.h"
+#include "interrupt/interrupt.h"
 
 static Idt_entry idt[256];
 
@@ -153,53 +152,12 @@ void kernel_main
 
     vga_printf("\n%ZPage tables OK :)%z\n", 0x20);
 
-    u64 handler = (u64)page_fault_stub;
 
-    idt[14].offset_low    = handler & 0xFFFF;
-    idt[14].offset_middle = (handler >> 16) & 0xFFFF;
-    idt[14].offset_high   = (handler >> 32) & 0xFFFFFFFF;
-
-    idt[14].segment_selector = 0x08;
-    idt[14].ist = 0;
-
-
-    /*
-    IDT attributes:
-    bit:   7   6 5   4 3 2 1 0
-           ─   ─ ─     ─ ─ ─ ─
-           P   DPL      TYPE
-        Present = 1
-        DPL     = 00
-        TYPE    = 1110 (64-bit interrupt gate)
-
-        0b10001110 = 0x8E
-     */
-    idt[14].type_attrs = 0x8E;
-
-    idt[14].reserved = 0;
-
-    u8 idtr[10];
-
-    u16 limit = sizeof(idt) - 1;
-    u64 base = (u64)idt;
-
-    idtr[0] = limit;
-    idtr[1] = limit >> 8;
-
-    for (u8 i = 0; i < 8; ++i)
-        idtr[i + 2] = base >> (8 * i);
-
-    __asm__ volatile
-    (
-        "lidt %0"
-        :
-        : "m"(idtr)
-    );
+    setup_idt(idt);
 
     // vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
-    //
     // volatile u8* ptr = (u8*)0x3FFFFFFF;
-    // u8 value = *(ptr + 0);
+    // u8 value = *(ptr + 1);
     // vga_printf("%d\n", value);
 
 

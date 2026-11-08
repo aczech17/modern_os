@@ -17,6 +17,4 @@ typedef struct
     u32 reserved;           // must be 0
 }Idt_entry;
 
-
-
 #endif // INTERRUPT_IDT_H

@@ -1,4 +1,4 @@
-global page_fault_stub
+global page_fault_isr
 extern page_fault_handler
 
 section .text
@@ -49,7 +49,7 @@ section .text
     pop rax
 %endmacro
 
-page_fault_stub:
+page_fault_isr:
     ENTER
 
     mov rdi, [rax + 120]

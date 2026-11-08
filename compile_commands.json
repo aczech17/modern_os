@@ -138,5 +138,25 @@
     ],
     "directory": "/home/tytjan/Programowanie/modern_os",
     "output": "out/kernel.elf"
+  },
+  {
+    "file": "src/interrupt/interrupt.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-std=c11",
+      "-ffreestanding",
+      "-fno-pie",
+      "-fno-pic",
+      "-fno-stack-protector",
+      "-fno-asynchronous-unwind-tables",
+      "-mno-red-zone",
+      "-Wall",
+      "-Wextra",
+      "src/interrupt/interrupt.c",
+      "-o",
+      "out/kernel.elf"
+    ],
+    "directory": "/home/tytjan/Programowanie/modern_os",
+    "output": "out/kernel.elf"
   }
 ]

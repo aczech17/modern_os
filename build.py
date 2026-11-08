@@ -11,12 +11,12 @@ emulation_tools = ["qemu-system-x86_64"]
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 
 kernel_asm_sources_and_outputs = [
-    ('src/interrupt/stubs.asm', 'out/interrupt.o')
+    ('src/interrupt/isr.asm', 'out/isr.o')
 ]
 
 kernel_c_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c',
-                  'src/interrupt/handlers.c']
+                  'src/interrupt/handlers.c', 'src/interrupt/interrupt.c']
 
 linker_script_template = 'linker_template.ld'
 os_image_path = "out/modern_os.img"
