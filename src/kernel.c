@@ -18,6 +18,9 @@
 #include "interrupt/idt.h"
 #include "interrupt/interrupt.h"
 
+
+static alignas(4096) Page_table level1;
+static alignas(4096) Page_table level2;
 static Idt_entry idt[256];
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
@@ -85,67 +88,17 @@ void kernel_main
     u64 free_frames_count = get_free_frames_count(&frame_allocator);
     vga_printf("%Zfree frames count = %X\n%z", 0x0F, free_frames_count);
 
-
-    /*
-        u8 present;
-        u8 writable;
-        u8 user_accessible;
-        u8 write_through_caching;
-        u8 cache_disable;
-        u8 accessed;
-        u8 dirty;
-        u8 huge_page;
-        u8 global;
-        u64 available;
-        u64 phys_addr;
-        u64 no_execute;
-    */
-
-    alignas (4096)
-    Page_table pt1;
-    Page_table pt2;
-
     for (i32 i = 1; i < 512; ++i)
-        pt1.entry[i] = pt2.entry[i] = 0;
+        level1.entry[i] = level2.entry[i] = 0;
 
-    Page_table_entry pt1_entry =
-    {
-        .present = 1,
-        .writable = 1,
-        .user_accessible = 0,
-        .write_through_caching = 0,
-        .cache_disable = 0,
-        .accessed = 0,
-        .dirty = 0,
-        .huge_page = 0,
-        .global = 0,
-        .available = 0,
-        .phys_addr = (Phys_addr)&pt2,
-        .no_execute = 0,
-    };
-    pt1.entry[0] = page_table_value(&pt1_entry);
+    level1.entry[0] = (u64)(&level2) | PTE_PRESENT | PTE_WRITABLE;
+    level2.entry[0] = PTE_PRESENT | PTE_WRITABLE | PTE_HUGE_PAGE;
 
-    Page_table_entry pt2_entry =
-    {
-        .present = 1,
-        .writable = 1,
-        .user_accessible = 0,
-        .write_through_caching = 0,
-        .cache_disable = 0,
-        .accessed = 0,
-        .dirty = 0,
-        .huge_page = 1,
-        .global = 0,
-        .available = 0,
-        .phys_addr = 0,
-        .no_execute = 0,
-    };
-    pt2.entry[0] = page_table_value(&pt2_entry);
 
     __asm__ volatile
     (
         "mov %0, %%cr3\n"
-        :: "r"(&pt1)
+        :: "r"(&level1)
         : "memory"
     );
 
@@ -155,33 +108,9 @@ void kernel_main
 
     setup_idt(idt);
 
-    // vga_printf("%ZINTs prepared. Trying to provoke pf.%z\n", 0x0D);
-    // volatile u8* ptr = (u8*)0x3FFFFFFF;
-    // u8 value = *(ptr + 1);
-    // vga_printf("%d\n", value);
+    Phys_addr frame_addr = allocate_frame(&frame_allocator);
+    vga_printf("frame %X\n", frame_addr);
 
-
-    Frame_address allocated_frames[5];
-
-    for (int i = 0; i < 5; ++i)
-    {
-        Frame_address addr = allocate_frame(&frame_allocator);
-        allocated_frames[i] = addr;
-
-        vga_printf("%X\n", addr);
-    }
-
-    for (int i = 0; i < 5; ++i)
-    {
-        deallocate_frame(&frame_allocator, allocated_frames[i]);
-    }
-
-    vga_printf("\n");
-    for (int i = 0; i < 5; ++i)
-    {
-        Frame_address addr = allocate_frame(&frame_allocator);
-        vga_printf("%X\n", addr);
-    }
 
     for (;;);
 }
