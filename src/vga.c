@@ -17,7 +17,7 @@ static void scroll_down(Vga_buffer* buffer)
     // Clear the bottom row.
     for (size_t col = 0; col < VGA_WIDTH; ++col)
     {
-        write_char_vga(' ', VGA_HEIGHT - 1, col, 0x07);
+        write_char_vga(' ', VGA_HEIGHT - 1, col, buffer->color);
     }
 
     buffer->row = VGA_HEIGHT - 1;
