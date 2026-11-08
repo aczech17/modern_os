@@ -64,7 +64,7 @@ void kernel_main
     u64 stack_limit
 )
 {
-    clear_screen(0x07);
+    vga_printf("%a"); // clear screen
     vga_printf("%ZSuper system!\n%z\n", 0x4E);
     
     Phys_memory_map phys_memory_regions;

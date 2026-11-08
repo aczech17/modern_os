@@ -25,13 +25,13 @@ void memory_set(u8* dst, char value, size_t count)
 
 void vga_printf(const char* format, ...)
 {
-    const char gray_on_black = 0x07;
+    const char default_color = 0x07; // gray on black
 
     static Vga_buffer vga =
     {
         .row = 0,
         .col = 0,
-        .color = gray_on_black,
+        .color = default_color,
     };
 
     va_list args;
@@ -52,6 +52,16 @@ void vga_printf(const char* format, ...)
 
         switch (*format)
         {
+            case 'A':
+                vga.color = (char)va_arg(args, int);
+                clear_screen(&vga);
+                break;
+
+            case 'a':
+                vga.color = default_color;
+                clear_screen(&vga);
+                break;
+
             case 'i':
             case 'd':
             {
@@ -96,7 +106,7 @@ void vga_printf(const char* format, ...)
                 vga.color = (char)va_arg(args, int);
                 break;
             case 'z': // color reset
-                vga.color = gray_on_black;
+                vga.color = default_color;
                 break;
                 
             default:

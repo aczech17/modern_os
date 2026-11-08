@@ -24,13 +24,16 @@ static void scroll_down(Vga_buffer* buffer)
     buffer->col = 0;
 }
 
-void clear_screen(char color)
+void clear_screen(Vga_buffer* vga_buffer)
 {
     for (char* dest = VGA_ADDRESS; dest < VGA_ADDRESS + VGA_SIZE; dest += 2)
     {
         *dest = ' ';
-        *(dest + 1) = color;
+        *(dest + 1) = vga_buffer->color;
     }
+
+    vga_buffer->col = 0;
+    vga_buffer->row = 0;
 }
 
 void write_char(Vga_buffer* buffer, const char c)

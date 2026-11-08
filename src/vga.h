@@ -16,7 +16,7 @@ typedef struct
     char color;
 }Vga_buffer;
 
-void clear_screen(char color);
+void clear_screen(Vga_buffer*);
 void write_char(Vga_buffer*, const char);
 void write_string(Vga_buffer*, const char* text);
 void write_hex(Vga_buffer*, u64 number, bool digit_uppercase, bool strip);
