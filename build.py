@@ -9,24 +9,22 @@ build_tools = ["nasm", "gcc"]
 emulation_tools = ["qemu-system-x86_64"]
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
-
 kernel_asm_sources_and_outputs = [
     ('src/interrupt/isr.asm', 'out/isr.o')
 ]
-
 kernel_c_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c',
                   'src/interrupt/handlers.c', 'src/interrupt/interrupt.c']
-
 linker_script_template = 'linker_template.ld'
-os_image_path = "out/modern_os.img"
-
 mem_layout_path = 'out/mem_layout.inc'
 
 stack_limit = 1 << 20
 stack_size = 1 << 24
 stack_base = stack_limit + stack_size
 text_addr = stack_base
+
+os_image_path = "out/modern_os.img"
+
 
 def print_green(message):
     print(f"\033[32m{message}\033[0m")
@@ -36,6 +34,36 @@ def print_yellow(message):
 
 def print_red(message):
     print(f"\033[31m{message}\033[0m")
+
+def parse_memory_size(input_size):
+    input_size = input_size.strip()
+    if input_size.endswith(("KiB", "MiB", "GiB")):
+        input_size = input_size[:-2]
+    elif input_size.endswith(("KB", "MB", "GB")):
+        input_size = input_size[:-1]
+    elif input_size.endswith(("Ki", "Mi", "Gi")):
+        input_size = input_size[:-1]
+
+    input_suffix = input_size.lstrip("0123456789").lstrip()
+    if input_suffix:
+        number = input_size[:-len(input_suffix)].strip()
+    else:
+        number = input_size.strip()
+
+    if not number.isascii() or not number.isdigit():
+        print_red("Invalid memory size.")
+        raise argparse.ArgumentTypeError()
+
+    if input_suffix:
+        if input_suffix in {"K", "M", "G"}:
+            si_suffix = input_suffix
+        else:   # invalid suffix
+            print_red("Invalid memory size.")
+            raise argparse.ArgumentTypeError()
+    else:
+        si_suffix = "M" # QEMU interprets no sufix as M, i.e. 4096 -> 4096 MiB
+
+    return f"{number}{si_suffix}"
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -49,7 +77,7 @@ def parse_arguments():
     subparsers.add_parser("clean")
 
     run_parser = subparsers.add_parser("run")
-    run_parser.add_argument("memory_size", nargs="?", default="4G")
+    run_parser.add_argument("memory_size", nargs="?", type=parse_memory_size, default="4G")
 
     debug_parser = subparsers.add_parser("debug")
     debug_parser.add_argument(
@@ -63,6 +91,26 @@ def parse_arguments():
     command_args.force_build = args.force_build
 
     return command_args
+
+
+def build_is_needed():
+    if not os.path.exists(os_image_path):
+        return True
+
+    image_mod_time = os.path.getmtime(os_image_path)
+
+    if os.path.getmtime(linker_script_template) > image_mod_time:
+        return True
+
+    for root, _, files in os.walk('src'):
+        for filename in files:
+            src_path = os.path.join(root, filename)
+
+            if os.path.getmtime(src_path) > image_mod_time:
+                return True
+
+    return False
+
 
 def check_tools(needed_tools):
     missing_tools = []
@@ -179,37 +227,44 @@ def create_disk_image():
             with open(filename, "rb") as f:
                 img_file.write(f.read())
 
-def qemu_run(memory_size):
-    memory_size = memory_size.strip()
-    if memory_size.endswith(("KiB", "MiB", "GiB")):
-        memory_size = memory_size[:-2]
-    elif memory_size.endswith("B"):
-        memory_size = memory_size[:-1]
-    elif memory_size.endswith(("Ki", "Mi", "Gi")):
-        memory_size = memory_size[:-1]
+def build():
+    print("Compiling to out directory.")
+    os.makedirs('out', exist_ok=True)
 
-    input_suffix = memory_size.lstrip("0123456789").lstrip()
-    if input_suffix:
-        number = memory_size[:-len(input_suffix)].strip()
-    else:
-        number = memory_size.strip()
+    print("Preparing linker script... ", end="")
+    linker_script_path = prepare_linker_script()
+    print(f"Written to {linker_script_path}")
 
-    if not number.isascii() or not number.isdigit():
-        print_red("Invalid memory size.")
-        return
+    for (src, output) in kernel_asm_sources_and_outputs:
+        print(f"Assembling {src}... ", end="")
+        assemble_kernel_asm(src, output)
+        print(f"Assembled {output}")
 
-    if input_suffix:
-        if input_suffix in {"K", "M", "G"}:
-            si_suffix = input_suffix
-        else:   # invalid suffix
-            print_red("Invalid memory size.")
-            return
-    else:
-        si_suffix = "M" # QEMU interprets no sufix as M, i.e. 4096 -> 4096 MiB
+    asm_objects = [path[1] for path in kernel_asm_sources_and_outputs]
 
-    print(f"Running QEMU with {number}{si_suffix}iB of memory.")
+    print("Compiling kernel... ", end="")
+    compile_kernel(kernel_c_sources, asm_objects , linker_script_path, 'out/kernel.elf')
+    print("Compiled to out/kernel.elf")
 
-    qemu_memory_size = f"{number}{si_suffix}"
+    write_kernel_layout('out/kernel.elf')
+
+    print("Assembling bootloader stage 2... ", end="")
+    assemble_bootloader_stage(bootloader_sources[1], 'out/bootloader_stage2.bin')
+    print("Done")
+
+    write_stage2_sectors_count('out/bootloader_stage2.bin')
+
+    print("Assembling bootloader stage 1... ", end="")
+    assemble_bootloader_stage(bootloader_sources[0], 'out/bootloader_stage1.bin')
+    print("Done")
+
+    print(f"Joining OS files to {os_image_path}...")
+    create_disk_image()
+
+    print_green('All done')
+
+def qemu_run(qemu_memory_size):
+    print(f"Running QEMU with {qemu_memory_size}iB of memory.")
 
     qemu_process = None
     try:
@@ -247,61 +302,6 @@ def qemu_debug(debug_command, delay):
 
 def clean_all():
     shutil.rmtree('out', ignore_errors=True)
-
-
-def build_is_needed():
-    if not os.path.exists(os_image_path):
-        return True
-
-    image_mod_time = os.path.getmtime(os_image_path)
-
-    if os.path.getmtime(linker_script_template) > image_mod_time:
-        return True
-
-    for root, _, files in os.walk('src'):
-        for filename in files:
-            src_path = os.path.join(root, filename)
-
-            if os.path.getmtime(src_path) > image_mod_time:
-                return True
-
-    return False
-
-def build():
-    print("Compiling to out directory.")
-    os.makedirs('out', exist_ok=True)
-
-    print("Preparing linker script... ", end="")
-    linker_script_path = prepare_linker_script()
-    print(f"Written to {linker_script_path}")
-
-    for (src, output) in kernel_asm_sources_and_outputs:
-        print(f"Assembling {src}... ", end="")
-        assemble_kernel_asm(src, output)
-        print(f"Assembled {output}")
-
-    asm_objects = [path[1] for path in kernel_asm_sources_and_outputs]
-
-    print("Compiling kernel... ", end="")
-    compile_kernel(kernel_c_sources, asm_objects , linker_script_path, 'out/kernel.elf')
-    print("Compiled to out/kernel.elf")
-
-    write_kernel_layout('out/kernel.elf')
-
-    print("Assembling bootloader stage 2... ", end="")
-    assemble_bootloader_stage(bootloader_sources[1], 'out/bootloader_stage2.bin')
-    print("Done")
-
-    write_stage2_sectors_count('out/bootloader_stage2.bin')
-
-    print("Assembling bootloader stage 1... ", end="")
-    assemble_bootloader_stage(bootloader_sources[0], 'out/bootloader_stage1.bin')
-    print("Done")
-
-    print(f"Joining OS files to {os_image_path}...")
-    create_disk_image()
-
-    print_green('All done')
 
 
 def main():
