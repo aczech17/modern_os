@@ -17,4 +17,6 @@ typedef struct
     u32 reserved;           // must be 0
 }Idt_entry;
 
+void setup_idt(Idt_entry idt_entries[256]);
+
 #endif // INTERRUPT_IDT_H

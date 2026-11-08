@@ -1,23 +1,8 @@
-/*
-    VGA colors
-    (background << 4) | foreground
-    0x0	Black	    0x8	Dark Gray
-    0x1	Blue	    0x9	Light Blue
-    0x2	Green	    0xa	Light Green
-    0x3	Cyan	    0xb	Light Cyan
-    0x4	Red	        0xc	Light Red
-    0x5	Magenta	    0xd	Pink
-    0x6	Brown	    0xe	Yellow
-    0x7	Light Gray	0xf	White
-*/
-
 #include <stdalign.h>
 #include "memory/phys_memory_map.h"
 #include "memory/frame_allocator.h"
 #include "memory/page_table.h"
 #include "interrupt/idt.h"
-#include "interrupt/interrupt.h"
-
 
 static alignas(4096) Page_table level1;
 static alignas(4096) Page_table level2;
@@ -101,16 +86,10 @@ void kernel_main
         :: "r"(&level1)
         : "memory"
     );
-
-
-    vga_printf("\n%ZPage tables OK :)%z\n", 0x20);
-
+    vga_printf("\n%ZPage tables OK\n", 0x02);
 
     setup_idt(idt);
-
-    Phys_addr frame_addr = allocate_frame(&frame_allocator);
-    vga_printf("frame %X\n", frame_addr);
-
+    vga_printf("IDT set up.%z");
 
     for (;;);
 }

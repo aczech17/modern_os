@@ -15,7 +15,7 @@ kernel_asm_sources_and_outputs = [
 ]
 kernel_c_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c',
-                  'src/interrupt/handlers.c', 'src/interrupt/interrupt.c']
+                  'src/interrupt/handlers.c', 'src/interrupt/idt.c']
 linker_script_template = 'linker_template.ld'
 mem_layout_path = 'out/mem_layout.inc'
 
@@ -239,11 +239,11 @@ def write_kernel_layout(kernel_path):
     kernel_memory_size = determine_kernel_memory_size(kernel_path)
 
     with open(mem_layout_path, 'w') as f:
-        f.write(f"KERNEL_BLOB_SECTORS equ {kernel_sectors}\n")
-        f.write(f"STACK_BASE equ {stack_base}\n")
-        f.write(f"STACK_LIMIT equ {stack_limit}\n")
-        f.write(f"KERNEL_TEXT_ADDR equ {text_addr}\n")
-        f.write(f"KERNEL_MEMORY_SIZE equ {kernel_memory_size}\n")
+        f.write(f"KERNEL_BLOB_SECTORS equ 0x{kernel_sectors:X}\n")
+        f.write(f"STACK_BASE equ 0x{stack_base:X}\n")
+        f.write(f"STACK_LIMIT equ 0x{stack_limit:X}\n")
+        f.write(f"KERNEL_TEXT_ADDR equ 0x{text_addr:X}\n")
+        f.write(f"KERNEL_MEMORY_SIZE equ 0x{kernel_memory_size:X}\n")
 
 def assemble_bootloader_stage(source, output):
     try:
@@ -257,7 +257,7 @@ def write_stage2_sectors_count(stage2_path):
     stage2_sectors = (stage2_size + 511) // 512
 
     with open(mem_layout_path, 'a') as f:
-        f.write(f"STAGE2_SECTORS equ {stage2_sectors}\n")
+        f.write(f"STAGE2_SECTORS equ 0x{stage2_sectors:X}\n")
 
 
 def create_disk_image():

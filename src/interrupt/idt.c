@@ -1,4 +1,4 @@
-#include "interrupt.h"
+#include "idt.h"
 #include "handlers.h"
 #include <stddef.h>
 

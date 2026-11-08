@@ -140,7 +140,7 @@
     "output": "out/kernel.elf"
   },
   {
-    "file": "src/interrupt/interrupt.c",
+    "file": "src/interrupt/idt.c",
     "arguments": [
       "/usr/bin/gcc",
       "-std=c11",
@@ -152,7 +152,7 @@
       "-mno-red-zone",
       "-Wall",
       "-Wextra",
-      "src/interrupt/interrupt.c",
+      "src/interrupt/idt.c",
       "-o",
       "out/kernel.elf"
     ],
