@@ -107,10 +107,10 @@ load_kernel:
 .trim:
 	mov ebx, KERNEL_BUFFER_SECTORS
 .fits:
-	mov [dap.sector_count], bx
+	mov [disk_address_packet.sector_count], bx
 
 	mov ah, 0x42
-	mov si, dap
+	mov si, disk_address_packet
 	mov dl, [boot_drive]
 
 	int 0x13
@@ -137,10 +137,10 @@ load_kernel:
 	; DS:SI -> ES:DI
 
 	; ECX is number of bytes to copy.
-	; dap.sector_counts has info about 
+	; disk_address_packet.sector_counts has info about 
 	; how many sectors were read to memory.
 	; We want to copy sectors_count * 512 bytes.
-	movzx ecx, word [dap.sector_count]
+	movzx ecx, word [disk_address_packet.sector_count]
 	shl ecx, 9
 
 	; Set destination in EDI.
@@ -169,10 +169,10 @@ load_kernel:
 	mov ds, ax
 	mov es, ax
 	
-	movzx eax, word [dap.sector_count]
+	movzx eax, word [disk_address_packet.sector_count]
 
-	add dword [dap.lba], eax
-	adc dword [dap.lba + 4], 0
+	add dword [disk_address_packet.lba], eax
+	adc dword [disk_address_packet.lba + 4], 0
 
 	sub dword [kernel_sectors_left], eax
 
@@ -238,16 +238,14 @@ set_up_page_tables:
 	jne .map_p2_table
 .done:
 
+    ; Enable PAE flag in CR4 (physical address extension).
+    mov eax, cr4
+    or eax, 1 << 5
+    mov cr4, eax
 
-enable_paging:
 	; Load level4 table to CR3 register.
 	mov eax, page_table.level4
 	mov cr3, eax
-
-	; Enable PAE flag in CR4 (physical address extension).
-	mov eax, cr4
-	or eax, 1 << 5
-	mov cr4, eax
 
 	; Set long mode bit in a model specific register called EFER
 	mov ecx, 0xC0000080 ; EFER number
@@ -255,12 +253,36 @@ enable_paging:
 	or eax, 1 << 8 	; EFER content lands in EAX so modify it
 	wrmsr			; and write it back.
 
+enable_nxe:
+    ; First we need to check if it's possible.
+    ; But earlier we need to check if checking is possible.
+
+    ; Determine the maximum supported extended CPUID function.
+    mov eax, 0x80000000
+    cpuid
+    cmp eax, 0x80000001
+    jb .done    ; If checking is not possible, nevermind, don't enable it.
+
+    ; Do the actual check.
+    mov eax, 0x80000001
+    cpuid
+    bt edx, 20
+    jnc .done   ; If the check is negative, don't enable it as well.
+
+.do_it:
+    mov ecx, 0xC0000080
+    rdmsr
+    or eax, 1 << 11
+    wrmsr
+.done:
+
+    lgdt [gdt_64.addr]
+
 	; Enable paging in the CR0 register.
 	mov eax, cr0
 	or eax, 1 << 31
 	mov cr0, eax
 
-	lgdt [gdt_64.addr]
 	jmp dword 0x8:start_64
 
 	[bits 64]
@@ -275,6 +297,8 @@ start_64:
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
+	mov fs, ax
+	mov gs, ax
 
 parse_kernel:
 	mov rsi, [abs KERNEL_BLOB_ADDRESS + 0x20]		; Load e_phof - start of the program header table.
@@ -359,7 +383,7 @@ kernel_sectors_left:	dd KERNEL_BLOB_SECTORS
 kernel_destination:		dd KERNEL_BLOB_ADDRESS
 
 align 4
-dap:
+disk_address_packet:
 	db 0x10	; size
 	db 0	; reserved
 .sector_count:
@@ -437,7 +461,7 @@ gdt_64:
 	dd (10 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 21) | (1 << 23)
 .data:
 	dd 0xFFFF  ; segment limit
-	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 21) | (1 << 23)
+	dd (2 << 8) | (1 << 12) | (1 << 15) | (0xF << 16) | (1 << 22) | (1 << 23)
 .null2:
 	dd 0
 	dd 0
