@@ -6,7 +6,7 @@
  *
  * Determine which frames are free. Free frames are those available and not belonging to the kernel.
  **/
-void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions)
+void setup_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions)
 {
     allocator->available_regions = available_regions;
     allocator->kernel_regions = kernel_regions;

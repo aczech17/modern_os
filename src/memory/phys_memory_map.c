@@ -1,4 +1,5 @@
 #include "phys_memory_map.h"
+#include "../vga.h"
 
 void determine_available_phys_addresses(Phys_memory_map* mmap, Phys_addr bios_mmap_addr, u32 mmap_count, Phys_addr low_mem_size)
 {
@@ -20,7 +21,7 @@ void determine_available_phys_addresses(Phys_memory_map* mmap, Phys_addr bios_mm
     }
 }
 
-void init_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16 ph_count,
+void register_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16 ph_count,
     Phys_addr stack_base, Phys_addr stack_limit)
 {
     kernel_regions->region_count = 0;
@@ -37,5 +38,9 @@ void init_kernel_regions(Phys_memory_map* kernel_regions, Phys_addr ph_addr, u16
 
     kernel_regions->start_addr[kernel_regions->region_count] = stack_limit;
     kernel_regions->end_addr[kernel_regions->region_count] = stack_base;
+    ++kernel_regions->region_count;
+
+    kernel_regions->start_addr[kernel_regions->region_count] = (Phys_addr)VGA_ADDRESS;
+    kernel_regions->end_addr[kernel_regions->region_count] = (Phys_addr)(VGA_ADDRESS + VGA_SIZE - 1);
     ++kernel_regions->region_count;
 }

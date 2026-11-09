@@ -13,7 +13,7 @@ typedef struct
     u32 latest_allocated_block;
 }Frame_allocator;
 
-void init_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions);
+void setup_frame_allocator(Frame_allocator* allocator, Phys_memory_map* available_regions, Phys_memory_map* kernel_regions);
 Frame_address allocate_frame(Frame_allocator* allocator);
 void deallocate_frame(Frame_allocator* allocator, Frame_address frame_address);
 

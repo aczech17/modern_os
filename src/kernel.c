@@ -4,13 +4,16 @@
 #include "memory/page_table.h"
 #include "interrupt/idt.h"
 
-static alignas(4096) Page_table level1;
-static alignas(4096) Page_table level2;
+static alignas(4096) Page_table pt_level1;
+static alignas(4096) Page_table pt_level2;
+static alignas(4096) Page_table pt_level3;
+static alignas(4096) Page_table pt_level4[512];
+
 static Idt_entry idt[256];
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
-    vga_printf("%Z%s%z:\n", 0x09 ,name);
+    vga_printf("%Z%s:%z\n", 0x09 ,name);
     u64 total_memory_available = 0;
     for (u32 i = 0; i < memory_regions->region_count; ++i)
     {
@@ -55,38 +58,25 @@ void kernel_main
     vga_printf("%ZSuper system!\n%z\n", 0x4E);
     
     Phys_memory_map phys_memory_regions;
-
     determine_available_phys_addresses(&phys_memory_regions, memory_map_addr, memory_map_entry_count, 1 << 20);
 
     Phys_memory_map kernel_regions;
-    init_kernel_regions(&kernel_regions, kernel_program_header_addr, kernel_program_header_entry_count, stack_base, stack_limit);
+    register_kernel_regions(&kernel_regions, kernel_program_header_addr, kernel_program_header_entry_count, stack_base, stack_limit);
 
-    print_memory_map(&phys_memory_regions, "total available");
-    print_memory_map(&kernel_regions, "taken by kernel");
+    print_memory_map(&phys_memory_regions, "available memory");
+    print_memory_map(&kernel_regions, "kernel memory");
 
-    vga_printf("stack base = %X\n", stack_base);
-    vga_printf("stack limit = %X\n\n", stack_limit);
+    vga_printf("kernel stack base = %X\n", stack_base);
+    vga_printf("kernel stack limit = %X\n\n", stack_limit);
 
     Frame_allocator frame_allocator;
-    init_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
+    setup_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
 
     u64 free_frames_count = get_free_frames_count(&frame_allocator);
     vga_printf("%Zfree frames count = %X\n%z", 0x0F, free_frames_count);
 
-    for (i32 i = 1; i < 512; ++i)
-        level1.entry[i] = level2.entry[i] = 0;
-
-    level1.entry[0] = (u64)(&level2) | PTE_PRESENT | PTE_WRITABLE;
-    level2.entry[0] = PTE_PRESENT | PTE_WRITABLE | PTE_HUGE_PAGE;
-
-
-    __asm__ volatile
-    (
-        "mov %0, %%cr3\n"
-        :: "r"(&level1)
-        : "memory"
-    );
-    vga_printf("\n%ZPage tables OK\n", 0x02);
+    setup_page_tables(&pt_level1, &pt_level2, &pt_level3, pt_level4, &kernel_regions);
+    vga_printf("\n%ZPage tables set up.\n", 0x02);
 
     setup_idt(idt);
     vga_printf("IDT set up.%z");

@@ -18,6 +18,70 @@
     63	no execute	forbid executing code on this page (the NXE bit in the EFER register must be set)
 */
 
+/*
+    lvl1    lvl2    lvl3    lvl4    offset
+    47-39   38-30   29-21   20-12   11-0
+*/
+
+/// Identity mapping kernel.
+void setup_page_tables
+(
+    Page_table* pt_level_1,
+    Page_table* pt_level_2,
+    Page_table* pt_level_3,
+    Page_table pt_level_4[512],
+    Phys_memory_map* kernel_regions
+)
+{
+    for (int i = 0; i < 512; ++i)
+    {
+        pt_level_1->entry[i] = pt_level_2->entry[i] = pt_level_3->entry[i] = 0;
+
+        // Also zero all the 512 level 4 tables.
+        memory_set((u8*)&pt_level_4[i], 0, sizeof(Page_table));
+    }
+
+    // Identity map kernel regions.
+    // Current algorithm is not very effective.
+    for (u64 i = 0; i < kernel_regions->region_count; ++i)
+    {
+        Phys_addr start = kernel_regions->start_addr[i];
+        Phys_addr end   = kernel_regions->end_addr[i];
+
+        Phys_addr low_frame_addr = (start / FRAME_SIZE) * FRAME_SIZE;
+        Phys_addr hi_frame_addr  = (end / FRAME_SIZE) * FRAME_SIZE;
+
+        for (Phys_addr frame_addr = low_frame_addr; frame_addr <= hi_frame_addr; frame_addr += FRAME_SIZE)
+        {
+            u64 level_4_table_index = (frame_addr >> 21) & 0x1FF;
+            u64 level_4_entry_index = (frame_addr >> 12) & 0x1FF;
+
+            pt_level_4[level_4_table_index]
+                .entry[level_4_entry_index] =
+                PTE_PRESENT | PTE_WRITABLE | (frame_addr & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+
+
+            if (!(pt_level_3->entry[level_4_table_index] & PTE_PRESENT))
+            {
+                pt_level_3->entry[level_4_table_index] =
+                    PTE_PRESENT | PTE_WRITABLE |
+                        ((Phys_addr)(&pt_level_4[level_4_table_index]) & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+            }
+        }
+    }
+
+
+    pt_level_2->entry[0] = PTE_PRESENT | PTE_WRITABLE | ((Phys_addr)pt_level_3 & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+    pt_level_1->entry[0] = PTE_PRESENT | PTE_WRITABLE | ((Phys_addr)pt_level_2 & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+
+    __asm__ volatile
+    (
+        "mov %0, %%cr3\n"
+        :: "r"(pt_level_1)
+        : "memory"
+    );
+}
+
 Phys_addr get_phys_addr(const Page_table* pt_root, const Virt_addr virt_addr)
 {
     const Page_table* pt = pt_root;

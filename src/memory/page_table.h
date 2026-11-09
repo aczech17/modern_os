@@ -25,6 +25,14 @@ typedef struct
 #define PTE_2_MIB_PHYSICAL_ADDRESS_MASK 0x000FFFFFFFE00000ULL
 #define PTE_1_GIB_PHYSICAL_ADDRESS_MASK 0x000FFFFFC0000000ULL
 
+void setup_page_tables
+(
+    Page_table* pt_level_1,
+    Page_table* pt_level_2,
+    Page_table* pt_level_3,
+    Page_table pt_level_4[512],
+    Phys_memory_map* kernel_regions
+);
 Phys_addr get_phys_addr(const Page_table* pt_root, const Virt_addr virt_addr);
 
 #endif // PAGE_TABLE_H
