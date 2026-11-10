@@ -1,6 +1,6 @@
 #include "page_table.h"
-#include "common.h"
 #include "../common.h"
+#include "common.h"
 
 /*
     0	present	the page is currently in memory
@@ -74,12 +74,7 @@ void setup_page_tables
     pt_level_2->entry[0] = PTE_PRESENT | PTE_WRITABLE | ((Phys_addr)pt_level_3 & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
     pt_level_1->entry[0] = PTE_PRESENT | PTE_WRITABLE | ((Phys_addr)pt_level_2 & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
 
-    __asm__ volatile
-    (
-        "mov %0, %%cr3\n"
-        :: "r"(pt_level_1)
-        : "memory"
-    );
+    set_cr3((u64)pt_level_1);
 }
 
 Phys_addr get_phys_addr(const Page_table* pt_root, const Virt_addr virt_addr)

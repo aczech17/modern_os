@@ -11,7 +11,8 @@ emulation_tools = ["qemu-system-x86_64"]
 
 bootloader_sources = ['src/boot/stage1.asm', 'src/boot/stage2.asm']
 kernel_asm_sources_and_outputs = [
-    ('src/interrupt/isr.asm', 'out/isr.o')
+    ('src/interrupt/isr.asm', 'out/isr.o'),
+    ('src/asm_routines.asm', 'out/asm_routines.o')
 ]
 kernel_c_sources = ['src/kernel.c', 'src/vga.c', 'src/common.c', 'src/memory/phys_memory_map.c', 'src/memory/frame_allocator.c',
                   'src/memory/page_table.c',

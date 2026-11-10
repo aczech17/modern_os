@@ -1,6 +1,7 @@
 #include "idt.h"
 #include "handlers.h"
 #include <stddef.h>
+#include "../common.h"
 
 static void setup_idt_entry(Idt_entry idt_entries[256], const size_t entry_num, const u64 isr_address)
 {
@@ -32,6 +33,8 @@ void setup_idt(Idt_entry idt_entries[256])
 	// 14
 	setup_idt_entry(idt_entries, 14, (u64)page_fault_isr);
 
+
+
 	u8 idtr[10];
 
 	u16 limit = 256 * sizeof(Idt_entry) - 1;
@@ -43,10 +46,5 @@ void setup_idt(Idt_entry idt_entries[256])
 	for (u8 i = 0; i < 8; ++i)
 		idtr[i + 2] = base >> (8 * i);
 
-	__asm__ volatile
-	(
-		"lidt %0"
-		:
-		: "m"(idtr)
-	);
+	load_idtr((u64)idtr);
 }
