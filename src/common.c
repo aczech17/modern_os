@@ -17,10 +17,14 @@ void memory_copy(char* dst, const char* src, size_t count)
         *dst++ = *src++;
 }
 
-void memory_set(u8* dst, char value, size_t count)
+void* memset(void* dest, int value, size_t count)
 {
+    u8* dst = dest;
+
     for (size_t i = 0; i < count; ++i)
-        dst[i] = value;
+        dst[i] = (u8)value;
+
+    return dest;
 }
 
 void vga_printf(const char* format, ...)

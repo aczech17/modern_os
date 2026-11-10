@@ -38,7 +38,7 @@ void setup_page_tables
         pt_level_1->entry[i] = pt_level_2->entry[i] = pt_level_3->entry[i] = 0;
 
         // Also zero all the 512 level 4 tables.
-        memory_set((u8*)&pt_level_4[i], 0, sizeof(Page_table));
+        memset(&pt_level_4[i], 0, sizeof(Page_table));
     }
 
     // Identity map kernel regions.

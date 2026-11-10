@@ -18,7 +18,7 @@ void load_idtr(u64 idtr_addr);
 
 size_t string_len(const char* text);
 void memory_copy(char* dst, const char* src, size_t count);
-void memory_set(u8* dst, char value, size_t count);
+void* memset(void* dest, int value, size_t count);
 void vga_printf(const char* format, ...);
 void panic(const char* msg);
 

@@ -13,7 +13,7 @@ void setup_frame_allocator(Frame_allocator* allocator, Phys_memory_map* availabl
     allocator->latest_allocated_block = 0;
 
     // Initially mark all frames as used.
-    memory_set(allocator->frame_bitmap, (char)0xFF, FRAME_BITMAP_SIZE);
+    memset(allocator->frame_bitmap, 0xFF, FRAME_BITMAP_SIZE);
     
     // Mark available memory regions as unused.
     for (u32 region = 0; region < available_regions->region_count; ++region)
