@@ -22,7 +22,7 @@ static void print_memory_map(const Phys_memory_map* memory_regions, const char* 
     }
     // u64 total_frames_available = total_memory_available / FRAME_SIZE;
 
-    vga_printf("Total memory in %s: %XB\n", name, total_memory_available);
+    vga_printf("%s: %X bytes\n", name, total_memory_available);
     // vga_printf("Total frames in %s: %X\n%z\n", name, total_frames_available);
 }
 
