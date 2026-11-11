@@ -348,27 +348,39 @@ set_up_stack:
     mov rbp, STACK_BASE
 	mov rsp, rbp
 
-set_kernel_arguments:
-;   RDI - memory map address            (u64)
-;   RSI - memory map count              (u32)
-;   RDX - program header address        (u64)
-;   RCX - program header entry count    (u16)
-;   R8  - stack base                    (u64)
-;   R9  - stack limit                   (u64)
+set_kernel_mem_info:
+    ; Memory map address (u64)
+    mov rax, memory_sections.entries
+    mov qword [abs kernel_mem_info.mem_map_address], rax
 
-	mov rdi, memory_sections.entries
-	movzx rsi, dword [abs memory_sections.count]
+    ; Program header table address (u64)
+    mov rax, [abs KERNEL_BLOB_ADDRESS + 0x20]
+    add rax, KERNEL_BLOB_ADDRESS
+    mov qword [abs kernel_mem_info.ph_address], rax
 
-	; Program header table
-	mov rdx, [abs KERNEL_BLOB_ADDRESS + 0x20]
-	add rdx, KERNEL_BLOB_ADDRESS
+    ; Stack base (u64)
+    mov qword [abs kernel_mem_info.stack_base], STACK_BASE
 
-	; Program header entry count
-	movzx rcx, word [abs KERNEL_BLOB_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
+    ; Stack limit (u64)
+    mov qword [abs kernel_mem_info.stack_limit], STACK_LIMIT
 
-	mov r8, STACK_BASE
-	mov r9, STACK_LIMIT
-	
+    ; GDT address (u64)
+    mov qword [abs kernel_mem_info.gdt_address], gdt_64
+
+    ; Memory map count (u32)
+    mov eax, [abs memory_sections.count]
+    mov [abs kernel_mem_info.mem_map_count], eax
+
+    ; Program header entry count (u16)
+    mov ax, [abs KERNEL_BLOB_ADDRESS + 0x38]	; e_phnum -- numer of ph entries.
+    mov [abs kernel_mem_info.ph_entry_count], ax
+
+    ; GDT size (u16)
+    mov word [abs kernel_mem_info.gdt_size], (gdt_64.end - gdt_64)
+
+    ; Pass the pointer to the structure to the kernel.
+    mov rdi, kernel_mem_info
+
 jump_to_kernel:
 	mov rax, [abs KERNEL_BLOB_ADDRESS + 0x18]   ; e_entry -- entry point
 	call rax									; Finally jump to the kernel.
@@ -481,6 +493,33 @@ page_table:
 .level2:
 	times 512 dq 0
 
+; u64 mem_map_address;
+; u64 ph_address;
+; u64 stack_base;
+; u64 stack_limit;
+; u64 gdt_address;
+
+; u32 mem_map_count;
+
+; u16 ph_entry_count;
+; u16 gdt_size;
+kernel_mem_info:
+.mem_map_address:
+    dq 0
+.ph_address:
+    dq 0
+.stack_base:
+    dq 0
+.stack_limit:
+    dq 0
+.gdt_address:
+    dq 0
+.mem_map_count:
+    dd 0
+.ph_entry_count:
+    dw 0
+.gdt_size:
+    dw 0
+
 times (512 - (($ - $$) % 512)) % 512 db 0 ; Padding to full sector.
 stage2_end:
-

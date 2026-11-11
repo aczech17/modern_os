@@ -44,30 +44,24 @@ static u64 get_free_frames_count(const Frame_allocator *frame_allocator)
     return free_frames_count;
 }
 
-void kernel_main
-(
-    u64 memory_map_addr,
-    u32 memory_map_entry_count,
-    u64 kernel_program_header_addr,
-    u16 kernel_program_header_entry_count,
-    u64 stack_base,
-    u64 stack_limit
-)
+void kernel_main(const Kernel_mem_info* kernel_mem_info)
 {
+    const Phys_addr LOW_MEM_SIZE = 1 << 20;
+
     vga_printf("%a"); // clear screen
     vga_printf("%ZSuper system!\n%z\n", 0x4E);
-    
+
     Phys_memory_map phys_memory_regions;
-    determine_available_phys_addresses(&phys_memory_regions, memory_map_addr, memory_map_entry_count, 1 << 20);
+    determine_available_phys_addresses(&phys_memory_regions, kernel_mem_info, LOW_MEM_SIZE);
 
     Phys_memory_map kernel_regions;
-    register_kernel_regions(&kernel_regions, kernel_program_header_addr, kernel_program_header_entry_count, stack_base, stack_limit);
+    register_kernel_regions(&kernel_regions, kernel_mem_info);
 
     print_memory_map(&phys_memory_regions, "available memory");
     print_memory_map(&kernel_regions, "kernel memory");
 
-    vga_printf("kernel stack base = %X\n", stack_base);
-    vga_printf("kernel stack limit = %X\n\n", stack_limit);
+    vga_printf("kernel stack base = %X\n", kernel_mem_info->stack_base);
+    vga_printf("kernel stack limit = %X\n\n", kernel_mem_info->stack_limit);
 
     Frame_allocator frame_allocator;
     setup_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
@@ -79,7 +73,10 @@ void kernel_main
     vga_printf("\n%ZPage tables set up.\n", 0x02);
 
     setup_idt(idt);
-    vga_printf("IDT set up.%z");
+    vga_printf("IDT set up.%z\n");
+
+    vga_printf("Trying to provoke page fault.\n");
+    volatile u8 val = *(u8*)(1 << 30);
 
     for (;;);
 }
