@@ -53,6 +53,7 @@ page_fault_isr:
     ENTER
 
     mov rdi, [rax + 120]
+    mov rsi, cr2
     call page_fault_handler
 
     LEAVE
