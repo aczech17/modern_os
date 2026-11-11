@@ -5,7 +5,7 @@ static void write_char_vga(char c, size_t row, size_t col, char color)
     if (row >= VGA_HEIGHT || col >= VGA_WIDTH)
         return;
 
-    char* dest = VGA_ADDRESS + (row * VGA_WIDTH + col) * 2;
+    volatile char* dest = VGA_ADDRESS + (row * VGA_WIDTH + col) * 2;
     *dest = c;
     *(dest + 1) = color;
 }
