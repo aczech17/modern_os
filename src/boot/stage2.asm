@@ -216,26 +216,26 @@ start_32:
 	mov ss, ax
 
 set_up_page_tables:
-	mov eax, page_table.level3
-	or eax, 0b11 ; present + writable
-	mov [page_table.level4], eax
-
 	mov eax, page_table.level2
 	or eax, 0b11 ; present + writable
-	mov [page_table.level3], eax
+	mov [page_table.level1], eax
 
-	; Map each level2 entry to a huge 2MiB page.
+	mov eax, page_table.level3
+	or eax, 0b11 ; present + writable
+	mov [page_table.level2], eax
+
+	; Map each level3 entry to a huge 2MiB page.
 	mov ecx, 0
-.map_p2_table:
-	; Map ecx-th P2 entry to a huge page that starts at address 2MiB * ECX.
+.map_lvl3_table:
+	; Map ecx-th LVL 3 entry to a huge page that starts at address 2MiB * ECX.
 	mov eax, 1 << 21 ; 2MiB
 	mul ecx ; start address of ECX-th page
 	or eax, 0b10000011 ; huge + present + writable
-	mov [page_table.level2 + ecx * 8], eax ; map ECX-th entry
+	mov [page_table.level3 + ecx * 8], eax ; map ECX-th entry
 
 	inc ecx
 	cmp ecx, 512
-	jne .map_p2_table
+	jne .map_lvl3_table
 .done:
 
     ; Enable PAE flag in CR4 (physical address extension).
@@ -244,7 +244,7 @@ set_up_page_tables:
     mov cr4, eax
 
 	; Load level4 table to CR3 register.
-	mov eax, page_table.level4
+	mov eax, page_table.level1
 	mov cr3, eax
 
 	; Set long mode bit in a model specific register called EFER
@@ -486,11 +486,11 @@ gdt_64:
 
 align 4096
 page_table:
-.level4:
-	times 512 dq 0
-.level3:
+.level1:
 	times 512 dq 0
 .level2:
+	times 512 dq 0
+.level3:
 	times 512 dq 0
 
 ; u64 mem_map_address;
