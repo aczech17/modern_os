@@ -1,6 +1,8 @@
 #include "frame_allocator.h"
-#include "common.h"
 #include "../common.h"
+#include "common.h"
+#include <stdbool.h>
+
 
 /**
  *
@@ -14,9 +16,6 @@ void setup_frame_allocator
     u64 kernel_memory_size
 )
 {
-    allocator->latest_allocated_kernel_block = 0;
-    allocator->latest_allocated_general_block = 0;
-
     memset(allocator, 0, sizeof(Frame_allocator));
     
     // Mark available memory regions as accessible.
@@ -69,44 +68,62 @@ void setup_frame_allocator
     }
 }
 
-// Frame_address allocate_frame(Frame_allocator* allocator)
-// {
-//     /*
-//         1B = 8b ==> frame block = 8 frames
-//     */
-//     u64 block_index = allocator->latest_allocated_block;
-//
-//     for (u32 attempt = 0; attempt < FRAME_BITMAP_SIZE; ++attempt)
-//     {
-//         u8* frame_block_bitmap = &allocator->frame_data[block_index];
-//         if (*frame_block_bitmap == 0xFF) // If the block is full, switch to the next block and try again.
-//         {
-//             block_index = (block_index + 1) % FRAME_BITMAP_SIZE;
-//             continue;
-//         }
-//
-//         // We found a non-full frame block.
-//         allocator->latest_allocated_block = block_index;
-//
-//         // Search for a free frame in this block. Surely there is one.
-//         for (u32 i = 0; i < 8; ++i)
-//         {
-//             u8 mask = 0x80 >> i;
-//             if ((*frame_block_bitmap & mask) == 0)
-//             {
-//                 *frame_block_bitmap |= mask;   // mark as used
-//                 u64 frame_number = 8 * block_index + i;
-//
-//                 Frame_address frame_address = frame_number * FRAME_SIZE;
-//                 return frame_address;
-//             }
-//         }
-//
-//         block_index = (block_index + 1) % FRAME_BITMAP_SIZE;
-//     }
-//
-//     return INVALID_ADDR;
-// }
+static Frame_address allocate_frame(Frame_allocator* allocator, bool kernel_request)
+{
+    u64 frame_block = kernel_request ? allocator->latest_allocated_kernel_block
+        : allocator->latest_allocated_general_block;
+    u8 unwanted_block_kernelness = kernel_request ? 0 : 0xFF;
+
+    for (u64 attempt = 0; attempt < FRAME_BITMAP_SIZE; ++attempt)
+    {
+        u8 block_accessible = allocator->accessible[frame_block];
+        u8 block_kernelness = allocator->kernel_space[frame_block];
+        u8 block_taken = allocator->taken[frame_block];
+
+        if (block_accessible == 0 || block_kernelness == unwanted_block_kernelness || block_taken == 0xFF)
+        {
+            frame_block = (frame_block + 1) % FRAME_BITMAP_SIZE;
+            continue;
+        }
+
+        for (u64 i = 0; i < 8; ++i)
+        {
+            u8 mask = 0x80 >> i;
+
+            bool frame_accessible = allocator->accessible[frame_block] & mask;
+            bool frame_kernelness = allocator->kernel_space[frame_block] & mask;
+            bool frame_taken = allocator->taken[frame_block] & mask;
+
+            if (frame_accessible && frame_kernelness == kernel_request && !frame_taken)
+            {
+                // We've found a proper frame.
+                allocator->taken[frame_block] |= mask; // Mark as used
+
+                if (kernel_request)
+                    allocator->latest_allocated_kernel_block = frame_block;
+                else
+                    allocator->latest_allocated_general_block = frame_block;
+
+                u64 frame_number = 8 * frame_block + i;
+                return frame_number * FRAME_SIZE;
+            }
+        }
+
+        frame_block = (frame_block + 1) % FRAME_BITMAP_SIZE;
+    }
+
+    return INVALID_ADDR;
+}
+
+Frame_address allocate_kernel_frame(Frame_allocator* allocator)
+{
+    return allocate_frame(allocator, true);
+}
+
+Frame_address allocate_general_frame(Frame_allocator* allocator)
+{
+    return allocate_frame(allocator, false);
+}
 
 void deallocate_frame(Frame_allocator* allocator, Frame_address frame_address)
 {

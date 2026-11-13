@@ -28,7 +28,8 @@ void setup_frame_allocator
     Phys_memory_map* kernel_regions,
     u64 kernel_memory_size
 );
-
+Frame_address allocate_kernel_frame(Frame_allocator* allocator);
+Frame_address allocate_general_frame(Frame_allocator* allocator);
 void deallocate_frame(Frame_allocator* allocator, Frame_address frame_address);
 
 #endif // MEM_ALLOCATOR_H
