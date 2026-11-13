@@ -4,8 +4,9 @@
 #include "memory/page_table.h"
 #include "interrupt/idt.h"
 
-static alignas(4096) Page_table* page_table;
+Page_table* page_table;
 static Idt_entry idt[256];
+Frame_allocator global_frame_allocator;
 
 static void print_memory_map(const Phys_memory_map* memory_regions, const char* name)
 {
@@ -40,8 +41,8 @@ void kernel_main(const Kernel_mem_info* kernel_mem_info)
     print_memory_map(&phys_memory_regions, "available memory");
     print_memory_map(&kernel_regions, "kernel memory");
 
-    Frame_allocator frame_allocator;
-    setup_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions, KERNEL_MEM_SIZE);
+
+    setup_frame_allocator(&global_frame_allocator, &phys_memory_regions, &kernel_regions, KERNEL_MEM_SIZE);
 
     page_table = (Page_table*)(kernel_mem_info->page_table_address);
     vga_printf("\nPage table at %X\n", page_table);
@@ -52,17 +53,20 @@ void kernel_main(const Kernel_mem_info* kernel_mem_info)
     setup_idt(idt);
     vga_printf("IDT set up.%z\n");
 
-    vga_printf("Frame allocation test:\n");
-    for (int i = 0; i < 5; ++i)
-    {
-        Frame_address kernel_frame = allocate_kernel_frame(&frame_allocator);
-        Frame_address general_frame = allocate_general_frame(&frame_allocator);
-
-        vga_printf("K: %X; G: %X\n", kernel_frame, general_frame);
-    }
+    // vga_printf("Frame allocation test:\n");
+    // for (int i = 0; i < 5; ++i)
+    // {
+    //     Frame_address kernel_frame = allocate_kernel_frame(&global_frame_allocator);
+    //     Frame_address general_frame = allocate_general_frame(&global_frame_allocator);
+    //
+    //     vga_printf("K: %X; G: %X\n", kernel_frame, general_frame);
+    // }
 
     vga_printf("\nTrying to provoke page fault.\n");
-    volatile u8 val = *(u8*)(1 << 30);
+    volatile u8* addr = (u8*)(1 << 31);
+    *addr = 0x37;
+
+    vga_printf("%Z\nval=%X\nOK%z\n", 0x2F, *addr);
 
     for (;;);
 }

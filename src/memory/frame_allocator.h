@@ -21,6 +21,8 @@ typedef struct
     u32 latest_allocated_general_block;
 }Frame_allocator;
 
+extern Frame_allocator global_frame_allocator;
+
 void setup_frame_allocator
 (
     Frame_allocator* allocator,
