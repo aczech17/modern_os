@@ -367,6 +367,10 @@ set_kernel_mem_info:
     ; GDT address (u64)
     mov qword [abs kernel_mem_info.gdt_address], gdt_64
 
+    ; Page table address (u64)
+    mov rax, page_table
+    mov qword [abs kernel_mem_info.page_table_address], rax
+
     ; Memory map count (u32)
     mov eax, [abs memory_sections.count]
     mov [abs kernel_mem_info.mem_map_count], eax
@@ -498,6 +502,7 @@ page_table:
 ; u64 stack_base;
 ; u64 stack_limit;
 ; u64 gdt_address;
+; u64 page_table_address;
 
 ; u32 mem_map_count;
 
@@ -513,6 +518,8 @@ kernel_mem_info:
 .stack_limit:
     dq 0
 .gdt_address:
+    dq 0
+.page_table_address:
     dq 0
 .mem_map_count:
     dd 0

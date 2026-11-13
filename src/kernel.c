@@ -50,6 +50,7 @@ static u64 get_free_frames_count(const Frame_allocator *frame_allocator)
 void kernel_main(const Kernel_mem_info* kernel_mem_info)
 {
     const Phys_addr LOW_MEM_SIZE = 1 << 20;
+    const u64 KERNEL_MEM_SIZE = 1 << 30; // The government will feed itself.
 
     disable_bios_cursor();
     vga_printf("%a"); // clear screen
@@ -68,13 +69,15 @@ void kernel_main(const Kernel_mem_info* kernel_mem_info)
     // vga_printf("kernel stack limit = %X\n\n", kernel_mem_info->stack_limit);
 
     Frame_allocator frame_allocator;
-    setup_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions);
+    setup_frame_allocator(&frame_allocator, &phys_memory_regions, &kernel_regions, KERNEL_MEM_SIZE);
 
     // u64 free_frames_count = get_free_frames_count(&frame_allocator);
     // vga_printf("%Zfree frames count = %X\n%z", 0x0F, free_frames_count);
 
-    setup_page_tables(&pt_level1, &pt_level2, &pt_level3, pt_level4, &kernel_regions);
-    vga_printf("Page tables set up.\n");
+    vga_printf("Page table at %X\n", kernel_mem_info->page_table_address);
+
+    // setup_page_tables(&pt_level1, &pt_level2, &pt_level3, pt_level4, &kernel_regions);
+    // vga_printf("Page tables set up.\n");
 
     setup_idt(idt);
     vga_printf("IDT set up.%z\n");

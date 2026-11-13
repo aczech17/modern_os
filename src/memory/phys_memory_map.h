@@ -26,6 +26,7 @@ typedef struct
     u64 stack_base;
     u64 stack_limit;
     u64 gdt_address;
+    u64 page_table_address;
 
     u32 mem_map_count;
 
