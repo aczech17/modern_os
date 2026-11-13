@@ -80,6 +80,7 @@ def parse_arguments():
 
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("memory_size", nargs="?", type=parse_memory_size, default="4G")
+    run_parser.add_argument("--curses", action="store_true")
 
     debug_parser = subparsers.add_parser("debug")
     debug_parser.add_argument(
@@ -303,15 +304,21 @@ def build():
 
     print_green('All done')
 
-def qemu_run(qemu_memory_size):
+def qemu_run(qemu_memory_size, use_curses):
     print(f"Running QEMU with {qemu_memory_size}iB of memory.")
+
+    qemu_command = [
+    'qemu-system-x86_64',
+    '-drive', f'format=raw,file={os_image_path}',
+    '-m', qemu_memory_size
+    ]
+
+    if use_curses:
+        qemu_command += ['-vga', 'std', '-display', 'curses']
 
     qemu_process = None
     try:
-        qemu_process = subprocess.Popen(
-            ['qemu-system-x86_64',
-             '-drive', f'format=raw,file={os_image_path}',
-             '-m', qemu_memory_size])
+        qemu_process = subprocess.Popen(qemu_command)
         qemu_process.wait()
     except KeyboardInterrupt:
         if qemu_process is not None:
@@ -369,7 +376,7 @@ def main():
     if args.command == "run":
         if not check_tools(emulation_tools):
             return
-        qemu_run(args.memory_size)
+        qemu_run(args.memory_size, args.curses)
 
     elif args.command == "debug":
         if not check_tools(emulation_tools):
