@@ -300,6 +300,20 @@ start_64:
 	mov fs, ax
 	mov gs, ax
 
+enable_floating_point:
+    mov rax, cr0
+    bts rax, 1  ; MP = 1
+    btr rax, 2  ; EM = 0
+    btr rax, 3  ; TS = 0
+    mov cr0, rax
+
+    mov rax, cr4
+    bts rax, 9  ; OSFXSR = 1
+    mov cr4, rax
+
+    fninit
+    ldmxcsr [default_mxcsr]
+
 parse_kernel:
 	mov rsi, [abs KERNEL_BLOB_ADDRESS + 0x20]		; Load e_phof - start of the program header table.
 	add rsi, KERNEL_BLOB_ADDRESS						; Now in RSI we have the memory address of e_phof.
@@ -496,6 +510,10 @@ page_table:
 	times 512 dq 0
 .level3:
 	times 512 dq 0
+
+align 4
+default_mxcsr:
+    dd 0x1F80
 
 ; u64 mem_map_address;
 ; u64 ph_address;

@@ -68,5 +68,13 @@ void kernel_main(const Kernel_mem_info* kernel_mem_info)
 
     vga_printf("%Z\nval=%X\nOK%z\n", 0x2F, *addr);
 
+    vga_printf("fp test:\n");
+    double a = 2.5;
+    double b = 3.5;
+    double c = a + b;
+
+    u64 cc = *(u64*)(&c);
+    vga_printf("cc=%X\n", cc);
+
     for (;;);
 }
