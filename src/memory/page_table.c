@@ -26,15 +26,17 @@
 
 bool map_address(Virt_addr virt_addr, Phys_addr phys_addr)
 {
+    Page_table* current_page_table = global_page_table;
     for (u32 level = 1; level <= 4; ++level)
     {
         u64 virt_addr_shift = 48 - 9 * level;
         u64 index = (virt_addr >> virt_addr_shift) & 0b111111111;
-        Page_table_entry entry = page_table->entry[index];
+        Page_table_entry entry = current_page_table->entry[index];
 
         if (level == 4)
         {
-            page_table->entry[index] = PTE_PRESENT | PTE_WRITABLE | (phys_addr & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+            current_page_table->entry[index] = PTE_PRESENT | PTE_WRITABLE | (phys_addr & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+            invalidate_tlb_entry(virt_addr);
             return true;
         }
 
@@ -47,11 +49,11 @@ bool map_address(Virt_addr virt_addr, Phys_addr phys_addr)
             Page_table* next_lvl_pt_addr = (Page_table*)new_frame;
             memset(next_lvl_pt_addr, 0, FRAME_SIZE);
 
-            page_table->entry[index] = PTE_PRESENT | PTE_WRITABLE |
+            current_page_table->entry[index] = PTE_PRESENT | PTE_WRITABLE |
                 ((Phys_addr)next_lvl_pt_addr & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
         }
 
-        page_table = (Page_table*)(page_table->entry[index] & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
+        current_page_table = (Page_table*)(current_page_table->entry[index] & PTE_4_KIB_PHYSICAL_ADDRESS_MASK);
     }
 
     return true;
@@ -59,7 +61,7 @@ bool map_address(Virt_addr virt_addr, Phys_addr phys_addr)
 
 Phys_addr get_phys_addr(const Virt_addr virt_addr)
 {
-    const Page_table* pt = page_table;
+    const Page_table* pt = global_page_table;
     Phys_addr phys_addr, frame_base, frame_offset;
 
     for (u32 level = 1; level <= 4; ++level)

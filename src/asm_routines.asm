@@ -1,6 +1,7 @@
 global set_cr3
 global load_idtr
 global disable_bios_cursor
+global invalidate_tlb_entry
 
 set_cr3:
     mov cr3, rdi
@@ -21,4 +22,8 @@ disable_bios_cursor:
     or al, 0x20     ; set bit 5 to disable cursor
     out dx, al
 
+    ret
+
+invalidate_tlb_entry:
+    invlpg [rdi]
     ret

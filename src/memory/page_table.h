@@ -26,7 +26,7 @@ typedef struct
 #define PTE_2_MIB_PHYSICAL_ADDRESS_MASK 0x000FFFFFFFE00000ULL
 #define PTE_1_GIB_PHYSICAL_ADDRESS_MASK 0x000FFFFFC0000000ULL
 
-extern Page_table* page_table;
+extern Page_table* global_page_table;
 
 bool map_address(Virt_addr, Phys_addr);
 Phys_addr get_phys_addr(const Virt_addr virt_addr);

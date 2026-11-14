@@ -16,6 +16,7 @@ typedef int64_t i64;
 void set_cr3(u64 pt_tree_addr);
 void load_idtr(u64 idtr_addr);
 void disable_bios_cursor();
+void invalidate_tlb_entry(u64 virtual_address);
 
 size_t string_len(const char* text);
 void memory_copy(char* dst, const char* src, size_t count);

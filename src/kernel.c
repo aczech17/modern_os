@@ -4,7 +4,7 @@
 #include "memory/page_table.h"
 #include "interrupt/idt.h"
 
-Page_table* page_table;
+Page_table* global_page_table;
 static Idt_entry idt[256];
 Frame_allocator global_frame_allocator;
 
@@ -44,8 +44,8 @@ void kernel_main(const Kernel_mem_info* kernel_mem_info)
 
     setup_frame_allocator(&global_frame_allocator, &phys_memory_regions, &kernel_regions, KERNEL_MEM_SIZE);
 
-    page_table = (Page_table*)(kernel_mem_info->page_table_address);
-    vga_printf("\nPage table at %X\n", page_table);
+    global_page_table = (Page_table*)(kernel_mem_info->page_table_address);
+    vga_printf("\nPage table at %X\n", global_page_table);
 
     // setup_page_tables(&pt_level1, &pt_level2, &pt_level3, pt_level4, &kernel_regions);
     // vga_printf("Page tables set up.\n");
