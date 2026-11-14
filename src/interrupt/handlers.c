@@ -10,6 +10,10 @@ void page_fault_handler(u64 error_code, Virt_addr accessed_addr)
 	vga_printf("Accessed address: %X\n", accessed_addr);
 
 	u64 new_frame = allocate_general_frame(&global_frame_allocator);
+	if (new_frame == INVALID_ADDR)
+	{
+		panic("Frame allocation error. Run out of memory?");
+	}
 	map_address(accessed_addr, new_frame);
 
 	vga_printf("VA %X mapped to %X\n", accessed_addr, new_frame);
