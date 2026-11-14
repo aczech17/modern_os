@@ -312,7 +312,7 @@ enable_floating_point:
     mov cr4, rax
 
     fninit
-    ldmxcsr [default_mxcsr]
+    ldmxcsr [abs default_mxcsr]
 
 parse_kernel:
 	mov rsi, [abs KERNEL_BLOB_ADDRESS + 0x20]		; Load e_phof - start of the program header table.
